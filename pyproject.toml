@@ -24,7 +24,6 @@ dependencies = [
     "matrix-nio",
     "numpy>=1.25.0",
     "Pillow",
-    "pip",
     "protobuf",
     "psutil",
     "pydantic~=2.0",
