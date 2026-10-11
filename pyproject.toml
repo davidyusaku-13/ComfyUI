@@ -61,6 +61,9 @@ torch = { index = "pytorch-cu130" }
 torchvision = { index = "pytorch-cu130" }
 torchaudio = { index = "pytorch-cu130" }
 
+[dependency-groups]
+bot = ["python-telegram-bot>=21.0"]
+
 [project.urls]
 homepage = "https://www.comfy.org/"
 repository = "https://github.com/comfyanonymous/ComfyUI"

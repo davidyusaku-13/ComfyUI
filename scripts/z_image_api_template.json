@@ -1,0 +1,482 @@
+{
+  "2": {
+    "inputs": {
+      "clip_name": "qwen_3_4b_fp8_mixed.safetensors",
+      "type": "lumina2",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "CLIPLoader (Qwen 3.4B)"
+    }
+  },
+  "3": {
+    "inputs": {
+      "text": "Photorealistic full-body portrait of a beautiful slim Japanese woman with proportional big natural boobs and sexy body, fully naked, sitting on her legs on a bed inside a bedroom, one hand holding an iPhone 11 doing mirror selfie, the other hand is holding her boobs, no makeup, neutral color palette, softly lit with natural light, shallow depth of field, 50mm lens, high detail, editorial fashion photography, ultra realistic, magazine style",
+      "clip": [
+        "67",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "Positive Prompt"
+    }
+  },
+  "5": {
+    "inputs": {
+      "vae_name": "ae.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "VAELoader (Flux AE)"
+    }
+  },
+  "6": {
+    "inputs": {
+      "dimensions": "864x1152 ( 3:4 )",
+      "batch_size": 1
+    },
+    "class_type": "ZImageResolutionPreset",
+    "_meta": {
+      "title": "Resolution Preset (Aspect Ratio)"
+    }
+  },
+  "7": {
+    "inputs": {
+      "seed": [
+        "68",
+        0
+      ],
+      "steps": [
+        "13",
+        1
+      ],
+      "cfg": [
+        "13",
+        2
+      ],
+      "sampler_name": [
+        "13",
+        6
+      ],
+      "scheduler": [
+        "13",
+        8
+      ],
+      "denoise": 1.0,
+      "model": [
+        "15",
+        0
+      ],
+      "positive": [
+        "3",
+        0
+      ],
+      "negative": [
+        "12",
+        0
+      ],
+      "latent_image": [
+        "6",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "KSampler (Pass 1 Base)"
+    }
+  },
+  "9": {
+    "inputs": {
+      "samples": [
+        "7",
+        0
+      ],
+      "vae": [
+        "5",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode (Pass 1)"
+    }
+  },
+  "12": {
+    "inputs": {
+      "conditioning": [
+        "3",
+        0
+      ]
+    },
+    "class_type": "ConditioningZeroOut",
+    "_meta": {
+      "title": "Negative (ZeroOut)"
+    }
+  },
+  "13": {
+    "inputs": {
+      "preset": "ZIT (Turbo - 8 Steps, CFG 1.0)",
+      "sampler_pass1": "euler_ancestral",
+      "sampler_pass2": "dpmpp_sde",
+      "scheduler": "beta",
+      "turbo_model": "z_image_turbo_int8_convrot.safetensors",
+      "base_model": "z_image_int8_convrot.safetensors"
+    },
+    "class_type": "ZImagePresetLoader",
+    "_meta": {
+      "title": "Z-Image Preset Switch (Turbo / Base)"
+    }
+  },
+  "14": {
+    "inputs": {
+      "filename_prefix": "zi-351971767740904-1-base",
+      "images": [
+        "9",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save 1: Base (864x1152)"
+    }
+  },
+  "15": {
+    "inputs": {
+      "shift": 3.0,
+      "sampling": "flow",
+      "model": [
+        "67",
+        0
+      ]
+    },
+    "class_type": "ModelSamplingAuraFlow",
+    "_meta": {
+      "title": "ModelSamplingAuraFlow"
+    }
+  },
+  "29": {
+    "inputs": {
+      "seed": [
+        "68",
+        0
+      ],
+      "steps": [
+        "13",
+        3
+      ],
+      "cfg": [
+        "13",
+        4
+      ],
+      "sampler_name": [
+        "13",
+        7
+      ],
+      "scheduler": [
+        "13",
+        8
+      ],
+      "denoise": [
+        "13",
+        5
+      ],
+      "model": [
+        "15",
+        0
+      ],
+      "positive": [
+        "3",
+        0
+      ],
+      "negative": [
+        "12",
+        0
+      ],
+      "latent_image": [
+        "30",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "KSampler (Pass 2 Hi-Res 1.5x)"
+    }
+  },
+  "30": {
+    "inputs": {
+      "upscale_method": "nearest-exact",
+      "scale_by": 1.5,
+      "samples": [
+        "7",
+        0
+      ]
+    },
+    "class_type": "LatentUpscaleBy",
+    "_meta": {
+      "title": "Latent Upscale 1.5x (Hi-Res)"
+    }
+  },
+  "31": {
+    "inputs": {
+      "tile_size": 512,
+      "overlap": 64,
+      "temporal_size": 64,
+      "temporal_overlap": 8,
+      "samples": [
+        "29",
+        0
+      ],
+      "vae": [
+        "5",
+        0
+      ]
+    },
+    "class_type": "VAEDecodeTiled",
+    "_meta": {
+      "title": "VAE Decode Tiled (Pass 2)"
+    }
+  },
+  "32": {
+    "inputs": {
+      "filename_prefix": "zi-351971767740904-2-hires",
+      "images": [
+        "31",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save 2: Hi-Res (1296x1728)"
+    }
+  },
+  "38": {
+    "inputs": {
+      "rgthree_comparer": {
+        "images": [
+          {
+            "name": "A",
+            "selected": true,
+            "url": "/api/view?filename=rgthree.compare._temp_qzfac_00017_.png&type=temp&subfolder=&rand=0.8619772789055546"
+          },
+          {
+            "name": "B",
+            "selected": true,
+            "url": "/api/view?filename=rgthree.compare._temp_qzfac_00018_.png&type=temp&subfolder=&rand=0.07505692191872237"
+          }
+        ]
+      },
+      "image_a": [
+        "14",
+        0
+      ],
+      "image_b": [
+        "59",
+        0
+      ]
+    },
+    "class_type": "Image Comparer (rgthree)",
+    "_meta": {
+      "title": "Image Comparer (rgthree)"
+    }
+  },
+  "50": {
+    "inputs": {
+      "unet_name": "seedvr2_3b_int8_convrot.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "UNETLoader (SeedVR2 3B)"
+    }
+  },
+  "51": {
+    "inputs": {
+      "vae_name": "seedvr2_ema_vae_fp16.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "VAELoader (SeedVR2)"
+    }
+  },
+  "52": {
+    "inputs": {
+      "upscale_method": "lanczos",
+      "scale_by": 2.0,
+      "image": [
+        "31",
+        0
+      ]
+    },
+    "class_type": "ImageScaleBy",
+    "_meta": {
+      "title": "Image Scale 2x (Lanczos)"
+    }
+  },
+  "53": {
+    "inputs": {
+      "resized_images": [
+        "52",
+        0
+      ]
+    },
+    "class_type": "SeedVR2Preprocess",
+    "_meta": {
+      "title": "SeedVR2 Pre-Process"
+    }
+  },
+  "54": {
+    "inputs": {
+      "tile_size": 512,
+      "overlap": 64,
+      "temporal_size": 64,
+      "temporal_overlap": 8,
+      "pixels": [
+        "53",
+        0
+      ],
+      "vae": [
+        "51",
+        0
+      ]
+    },
+    "class_type": "VAEEncodeTiled",
+    "_meta": {
+      "title": "VAE Encode Tiled (SeedVR2)"
+    }
+  },
+  "55": {
+    "inputs": {
+      "model": [
+        "50",
+        0
+      ],
+      "vae_conditioning": [
+        "54",
+        0
+      ]
+    },
+    "class_type": "SeedVR2Conditioning",
+    "_meta": {
+      "title": "Apply SeedVR2 Conditioning"
+    }
+  },
+  "56": {
+    "inputs": {
+      "seed": 351971767740904,
+      "steps": 1,
+      "cfg": 1.0,
+      "sampler_name": "euler",
+      "scheduler": "simple",
+      "denoise": 1.0,
+      "model": [
+        "50",
+        0
+      ],
+      "positive": [
+        "55",
+        0
+      ],
+      "negative": [
+        "55",
+        1
+      ],
+      "latent_image": [
+        "54",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "KSampler (SeedVR2 1-Step)"
+    }
+  },
+  "57": {
+    "inputs": {
+      "tile_size": 512,
+      "overlap": 64,
+      "temporal_size": 64,
+      "temporal_overlap": 8,
+      "samples": [
+        "56",
+        0
+      ],
+      "vae": [
+        "51",
+        0
+      ]
+    },
+    "class_type": "VAEDecodeTiled",
+    "_meta": {
+      "title": "VAE Decode Tiled (SeedVR2 4K)"
+    }
+  },
+  "58": {
+    "inputs": {
+      "color_correction_method": "lab",
+      "images": [
+        "57",
+        0
+      ],
+      "original_resized_images": [
+        "52",
+        0
+      ]
+    },
+    "class_type": "SeedVR2PostProcessing",
+    "_meta": {
+      "title": "Post-Process (Color Correction)"
+    }
+  },
+  "59": {
+    "inputs": {
+      "filename_prefix": "zi-351971767740904-3-4k",
+      "images": [
+        "58",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save 3: SeedVR2 (4K Ultra HD)"
+    }
+  },
+  "67": {
+    "inputs": {
+      "PowerLoraLoaderHeaderWidget": {
+        "type": "PowerLoraLoaderHeaderWidget"
+      },
+      "lora_1": {
+        "on": true,
+        "lora": "NIceAsians_Zimage.safetensors",
+        "strength": 0.2
+      },
+      "\u2795 Add Lora": "",
+      "model": [
+        "13",
+        0
+      ],
+      "clip": [
+        "2",
+        0
+      ]
+    },
+    "class_type": "Power Lora Loader (rgthree)",
+    "_meta": {
+      "title": "Power Lora Loader (rgthree)"
+    }
+  },
+  "68": {
+    "inputs": {
+      "seed": 351971767740904
+    },
+    "class_type": "Seed (rgthree)",
+    "_meta": {
+      "title": "Master Seed (rgthree)"
+    },
+    "is_changed": [
+      351971767740904
+    ]
+  }
+}
