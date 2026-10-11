@@ -38,24 +38,45 @@
     "class_type": "CLIPTextEncode",
     "inputs": {
       "text": "A cinematic, hyper-detailed photograph of a stylish woman in a modern architectural room, natural ambient lighting, 8k resolution, photorealistic, magazine style",
-      "clip": ["2", 0]
+      "clip": [
+        "2",
+        0
+      ]
     }
   },
   "7": {
     "class_type": "CLIPTextEncode",
     "inputs": {
       "text": "blurry, ugly, distorted, low quality, bad anatomy, artifacts",
-      "clip": ["2", 0]
+      "clip": [
+        "2",
+        0
+      ]
     }
   },
   "8": {
     "class_type": "KSampler",
     "inputs": {
-      "model": ["1", 0],
-      "positive": ["6", 0],
-      "negative": ["7", 0],
-      "latent_image": ["4", 0],
-      "seed": ["5", 0],
+      "model": [
+        "1",
+        0
+      ],
+      "positive": [
+        "6",
+        0
+      ],
+      "negative": [
+        "7",
+        0
+      ],
+      "latent_image": [
+        "4",
+        0
+      ],
+      "seed": [
+        "5",
+        0
+      ],
       "steps": 25,
       "cfg": 4.0,
       "sampler_name": "euler",
@@ -66,23 +87,37 @@
   "9": {
     "class_type": "VAEDecodeTiled",
     "inputs": {
-      "samples": ["8", 0],
-      "vae": ["3", 0],
+      "samples": [
+        "8",
+        0
+      ],
+      "vae": [
+        "3",
+        0
+      ],
       "tile_size": 512,
-      "overlap": 64
+      "overlap": 64,
+      "temporal_size": 64,
+      "temporal_overlap": 8
     }
   },
   "10": {
     "class_type": "SaveImage",
     "inputs": {
-      "images": ["9", 0],
+      "images": [
+        "9",
+        0
+      ],
       "filename_prefix": "qwen21-%KSampler.seed%-1-base"
     }
   },
   "11": {
     "class_type": "LatentUpscaleBy",
     "inputs": {
-      "samples": ["8", 0],
+      "samples": [
+        "8",
+        0
+      ],
       "upscale_method": "bicubic",
       "scale_by": 1.5
     }
@@ -90,31 +125,57 @@
   "12": {
     "class_type": "KSampler",
     "inputs": {
-      "model": ["1", 0],
-      "positive": ["6", 0],
-      "negative": ["7", 0],
-      "latent_image": ["11", 0],
-      "seed": ["5", 0],
+      "model": [
+        "1",
+        0
+      ],
+      "positive": [
+        "6",
+        0
+      ],
+      "negative": [
+        "7",
+        0
+      ],
+      "latent_image": [
+        "11",
+        0
+      ],
+      "seed": [
+        "5",
+        0
+      ],
       "steps": 15,
       "cfg": 4.0,
       "sampler_name": "dpmpp_sde",
       "scheduler": "beta",
-      "denoise": 0.40
+      "denoise": 0.4
     }
   },
   "13": {
     "class_type": "VAEDecodeTiled",
     "inputs": {
-      "samples": ["12", 0],
-      "vae": ["3", 0],
+      "samples": [
+        "12",
+        0
+      ],
+      "vae": [
+        "3",
+        0
+      ],
       "tile_size": 512,
-      "overlap": 64
+      "overlap": 64,
+      "temporal_size": 64,
+      "temporal_overlap": 8
     }
   },
   "14": {
     "class_type": "SaveImage",
     "inputs": {
-      "images": ["13", 0],
+      "images": [
+        "13",
+        0
+      ],
       "filename_prefix": "qwen21-%KSampler.seed%-2-hires"
     }
   },
@@ -134,7 +195,10 @@
   "52": {
     "class_type": "ImageScaleBy",
     "inputs": {
-      "image": ["13", 0],
+      "image": [
+        "13",
+        0
+      ],
       "upscale_method": "lanczos",
       "scale_by": 2.0
     }
@@ -142,14 +206,23 @@
   "53": {
     "class_type": "SeedVR2Preprocess",
     "inputs": {
-      "resized_images": ["52", 0]
+      "resized_images": [
+        "52",
+        0
+      ]
     }
   },
   "54": {
     "class_type": "VAEEncodeTiled",
     "inputs": {
-      "pixels": ["53", 0],
-      "vae": ["51", 0],
+      "pixels": [
+        "53",
+        0
+      ],
+      "vae": [
+        "51",
+        0
+      ],
       "tile_size": 512,
       "overlap": 64,
       "temporal_size": 64,
@@ -159,18 +232,39 @@
   "55": {
     "class_type": "SeedVR2Conditioning",
     "inputs": {
-      "model": ["50", 0],
-      "latent": ["54", 0]
+      "model": [
+        "50",
+        0
+      ],
+      "vae_conditioning": [
+        "54",
+        0
+      ]
     }
   },
   "56": {
     "class_type": "KSampler",
     "inputs": {
-      "model": ["55", 0],
-      "positive": ["55", 1],
-      "negative": ["55", 2],
-      "latent_image": ["54", 0],
-      "seed": ["5", 0],
+      "model": [
+        "50",
+        0
+      ],
+      "positive": [
+        "55",
+        0
+      ],
+      "negative": [
+        "55",
+        1
+      ],
+      "latent_image": [
+        "54",
+        0
+      ],
+      "seed": [
+        "5",
+        0
+      ],
       "steps": 1,
       "cfg": 1.0,
       "sampler_name": "euler",
@@ -181,8 +275,14 @@
   "57": {
     "class_type": "VAEDecodeTiled",
     "inputs": {
-      "samples": ["56", 0],
-      "vae": ["51", 0],
+      "samples": [
+        "56",
+        0
+      ],
+      "vae": [
+        "51",
+        0
+      ],
       "tile_size": 512,
       "overlap": 64,
       "temporal_size": 64,
@@ -192,23 +292,38 @@
   "58": {
     "class_type": "SeedVR2PostProcessing",
     "inputs": {
-      "images": ["57", 0],
-      "original_resized_images": ["53", 0],
+      "images": [
+        "57",
+        0
+      ],
+      "original_resized_images": [
+        "53",
+        0
+      ],
       "color_correction_method": "lab"
     }
   },
   "59": {
     "class_type": "SaveImage",
     "inputs": {
-      "images": ["58", 0],
+      "images": [
+        "58",
+        0
+      ],
       "filename_prefix": "qwen21-%KSampler.seed%-3-ultra"
     }
   },
   "38": {
     "class_type": "Image Comparer (rgthree)",
     "inputs": {
-      "image_a": ["13", 0],
-      "image_b": ["58", 0]
+      "image_a": [
+        "13",
+        0
+      ],
+      "image_b": [
+        "58",
+        0
+      ]
     }
   }
 }
