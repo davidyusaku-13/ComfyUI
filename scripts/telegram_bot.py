@@ -664,20 +664,12 @@ async def prompt_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     logger.warning(f"Gagal mengirim photo preview: {pe}")
 
                 f.seek(0)
-                try:
-                    await update.message.reply_document(
-                        document=f,
-                        filename=filename,
-                        caption=f"📄 **File Asli 4K:** `{filename}`",
-                        parse_mode=ParseMode.MARKDOWN,
-                    )
-                except Exception as de:
-                    logger.error(f"Gagal mengirim dokumen: {de}")
-                    await update.message.reply_text(
-                        f"⚠️ **File 4K ({file_size_mb:.1f} MB) selesai dibuat**, namun koneksi internet terputus saat pengunggahan.\n\n"
-                        f"📁 File tetap tersimpan aman di PC Anda:\n`output/{filename}`",
-                        parse_mode=ParseMode.MARKDOWN,
-                    )
+                await update.message.reply_document(
+                    document=f,
+                    filename=filename,
+                    caption=f"📄 **File Asli 4K:** `{filename}`",
+                    parse_mode=ParseMode.MARKDOWN,
+                )
         else:
             async with aiohttp.ClientSession() as session:
                 async with session.get(img_url) as resp:
