@@ -93,7 +93,12 @@ def load_default_preferences() -> dict:
                     defaults["lora_strength"] = float(lora_cfg["strength"])
 
             if "68" in graph:
-                defaults["fixed_seed"] = int(graph["68"].get("inputs", {}).get("seed", defaults["fixed_seed"]))
+                seed_val = int(graph["68"].get("inputs", {}).get("seed", -1))
+                if seed_val == -1:
+                    defaults["seed_mode"] = "random"
+                else:
+                    defaults["seed_mode"] = "fixed"
+                    defaults["fixed_seed"] = seed_val
         except Exception as e:
             logger.warning(f"Gagal membaca default dari workflow template: {e}")
 
