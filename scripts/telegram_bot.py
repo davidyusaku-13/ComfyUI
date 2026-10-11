@@ -19,6 +19,7 @@ from telegram import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
 )
+from telegram.error import TimedOut
 from telegram.request import HTTPXRequest
 from telegram.constants import ParseMode
 from telegram.ext import (
@@ -660,16 +661,21 @@ async def prompt_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         caption=caption_text,
                         parse_mode=ParseMode.MARKDOWN,
                     )
+                except TimedOut:
+                    pass  # ghost upload — bytes sent, ACK slow; photo will appear
                 except Exception as pe:
                     logger.warning(f"Gagal mengirim photo preview: {pe}")
 
                 f.seek(0)
-                await update.message.reply_document(
-                    document=f,
-                    filename=filename,
-                    caption=f"📄 **File Asli 4K:** `{filename}`",
-                    parse_mode=ParseMode.MARKDOWN,
-                )
+                try:
+                    await update.message.reply_document(
+                        document=f,
+                        filename=filename,
+                        caption=f"📄 **File Asli 4K:** `{filename}`",
+                        parse_mode=ParseMode.MARKDOWN,
+                    )
+                except TimedOut:
+                    pass  # ghost upload — bytes sent, ACK slow; document will appear
         else:
             async with aiohttp.ClientSession() as session:
                 async with session.get(img_url) as resp:
