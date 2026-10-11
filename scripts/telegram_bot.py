@@ -19,7 +19,7 @@ from telegram import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
 )
-from telegram.error import TimedOut
+from telegram.error import TimedOut, BadRequest
 from telegram.request import HTTPXRequest
 from telegram.constants import ParseMode
 from telegram.ext import (
@@ -731,6 +731,12 @@ async def post_init(application: Application):
     logger.info("Daftar command resmi berhasil didaftarkan ke Telegram.")
 
 
+async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
+    if isinstance(context.error, BadRequest) and "Message is not modified" in str(context.error):
+        return
+    logger.error("Exception saat memproses update:", exc_info=context.error)
+
+
 def main():
     config = load_config()
     token = config["telegram"]["bot_token"]
@@ -752,6 +758,7 @@ def main():
     app.add_handler(CommandHandler("seed", seed_command_handler))
     app.add_handler(CallbackQueryHandler(callback_handler))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, prompt_handler))
+    app.add_error_handler(error_handler)
 
     logger.info("Bot Telegram ComfyUI aktif dengan menu pengaturan lengkap...")
     app.run_polling()
