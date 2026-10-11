@@ -21,6 +21,7 @@ from telegram import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
 )
+from telegram.request import HTTPXRequest
 from telegram.constants import ParseMode
 from telegram.ext import (
     Application,
@@ -654,18 +655,31 @@ async def prompt_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
         if local_output_path.exists():
-            with open(local_output_path, "rb") as photo_file:
-                await update.message.reply_photo(
-                    photo=photo_file,
-                    caption=caption_text,
-                    parse_mode=ParseMode.MARKDOWN,
-                )
-            with open(local_output_path, "rb") as doc_file:
-                await update.message.reply_document(
-                    document=doc_file,
-                    caption=f"📄 **File Asli:** `{filename}`",
-                    parse_mode=ParseMode.MARKDOWN,
-                )
+            with open(local_output_path, "rb") as f:
+                try:
+                    await update.message.reply_photo(
+                        photo=f,
+                        caption=caption_text,
+                        parse_mode=ParseMode.MARKDOWN,
+                    )
+                except Exception as pe:
+                    logger.warning(f"Gagal mengirim photo preview: {pe}")
+
+                f.seek(0)
+                try:
+                    await update.message.reply_document(
+                        document=f,
+                        filename=filename,
+                        caption=f"📄 **File Asli 4K:** `{filename}`",
+                        parse_mode=ParseMode.MARKDOWN,
+                    )
+                except Exception as de:
+                    logger.error(f"Gagal mengirim dokumen: {de}")
+                    await update.message.reply_text(
+                        f"⚠️ **File 4K ({file_size_mb:.1f} MB) selesai dibuat**, namun gagal dikirim ke chat karena koneksi upload internet timeout.\n\n"
+                        f"📁 File tetap tersimpan aman di PC Anda:\n`output/{filename}`",
+                        parse_mode=ParseMode.MARKDOWN,
+                    )
         else:
             async with aiohttp.ClientSession() as session:
                 async with session.get(img_url) as resp:
@@ -696,7 +710,15 @@ def main():
     config = load_config()
     token = config["telegram"]["bot_token"]
 
-    app = Application.builder().token(token).post_init(post_init).build()
+    # Berikan batas waktu upload (write_timeout) hingga 180 detik (3 menit) untuk file 4K (~8-10 MB)
+    request = HTTPXRequest(
+        connect_timeout=30.0,
+        read_timeout=120.0,
+        write_timeout=180.0,
+        pool_timeout=60.0,
+    )
+
+    app = Application.builder().token(token).request(request).post_init(post_init).build()
     app.bot_data["config"] = config
 
     app.add_handler(CommandHandler("start", start_handler))
