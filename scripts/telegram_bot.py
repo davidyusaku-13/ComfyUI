@@ -57,18 +57,47 @@ ALL_ASPECT_RATIOS = [
     ("9:21 Ultra-Tall (576x1344)", "576x1344 ( 9:21 )"),
 ]
 
-DEFAULT_PREFERENCES = {
-    "preset": "ZIT (Turbo - 8 Steps, CFG 1.0)",
-    "dimensions": "864x1152 ( 3:4 )",
-    "lora_strength": 0.2,
-    "seed_mode": "random",  # "random" or "fixed"
-    "fixed_seed": 351971767740904,
-    "pipeline_mode": "full",  # "full" (4K SeedVR2), "hires" (Pass 2 only), "draft" (Pass 1 only)
-    "sampler_pass1": "euler_ancestral",
-    "sampler_pass2": "dpmpp_sde",
-    "scheduler": "beta",
-    "denoise_pass2": 0.45,
-}
+def load_default_preferences() -> dict:
+    defaults = {
+        "preset": "ZIT (Turbo - 8 Steps, CFG 1.0)",
+        "dimensions": "864x1152 ( 3:4 )",
+        "lora_strength": 0.2,
+        "seed_mode": "random",
+        "fixed_seed": 351971767740904,
+        "pipeline_mode": "full",
+        "sampler_pass1": "euler_ancestral",
+        "sampler_pass2": "dpmpp_sde",
+        "scheduler": "beta",
+        "denoise_pass2": 0.45,
+    }
+    if TEMPLATE_PATH.exists():
+        try:
+            with open(TEMPLATE_PATH, "r", encoding="utf-8") as f:
+                graph = json.load(f)
+
+            if "13" in graph:
+                in13 = graph["13"].get("inputs", {})
+                defaults["preset"] = in13.get("preset", defaults["preset"])
+                defaults["sampler_pass1"] = in13.get("sampler_pass1", defaults["sampler_pass1"])
+                defaults["sampler_pass2"] = in13.get("sampler_pass2", defaults["sampler_pass2"])
+                defaults["scheduler"] = in13.get("scheduler", defaults["scheduler"])
+                if "denoise_pass2" in in13:
+                    defaults["denoise_pass2"] = float(in13["denoise_pass2"])
+
+            if "6" in graph:
+                defaults["dimensions"] = graph["6"].get("inputs", {}).get("dimensions", defaults["dimensions"])
+
+            if "67" in graph:
+                lora_cfg = graph["67"].get("inputs", {}).get("lora_1", {})
+                if isinstance(lora_cfg, dict) and "strength" in lora_cfg:
+                    defaults["lora_strength"] = float(lora_cfg["strength"])
+
+            if "68" in graph:
+                defaults["fixed_seed"] = int(graph["68"].get("inputs", {}).get("seed", defaults["fixed_seed"]))
+        except Exception as e:
+            logger.warning(f"Gagal membaca default dari workflow template: {e}")
+
+    return defaults
 
 
 def load_config() -> dict:
@@ -88,7 +117,7 @@ def is_authorized(user_id: int, allowed_ids: list[int]) -> bool:
 
 def get_user_pref(user_id: int) -> dict:
     if user_id not in user_sessions:
-        user_sessions[user_id] = DEFAULT_PREFERENCES.copy()
+        user_sessions[user_id] = load_default_preferences()
     return user_sessions[user_id]
 
 
@@ -441,7 +470,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         pref["denoise_pass2"] = float(data.split("set_denoise:")[1])
 
     elif data == "reset_settings":
-        user_sessions[user.id] = DEFAULT_PREFERENCES.copy()
+        user_sessions[user.id] = load_default_preferences()
 
     # Re-render main menu
     await query.edit_message_text(
