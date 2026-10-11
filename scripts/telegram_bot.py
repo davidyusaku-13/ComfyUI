@@ -4,14 +4,12 @@ Comprehensive remote control: Turbo/Base, 11 Aspect Ratios, LoRA Strength,
 Pipeline Modes (4K / Hi-Res / Draft), Samplers, Schedulers, Denoise, and Seed controls.
 """
 
-import os
 import json
+import logging
+import os
 import random
 import asyncio
-import logging
 from pathlib import Path
-
-# Python 3.11+ built-in TOML reader
 import tomllib
 
 import aiohttp
@@ -96,7 +94,10 @@ def get_user_pref(user_id: int) -> dict:
 async def check_comfy_online(server_url: str) -> bool:
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.get(f"{server_url}/system_stats", timeout=aiohttp.ClientTimeout(total=2)) as resp:
+            async with session.get(
+                f"{server_url}/system_stats",
+                timeout=aiohttp.ClientTimeout(total=2),
+            ) as resp:
                 return resp.status == 200
     except Exception:
         return False
@@ -154,12 +155,13 @@ def build_aspect_keyboard(user_id: int) -> InlineKeyboardMarkup:
     pref = get_user_pref(user_id)
     cur = pref["dimensions"]
 
-    buttons = []
     # Render in 2 columns for neatness
+    buttons = []
     row = []
     for label, dim in ALL_ASPECT_RATIOS:
         active = "✅ " if dim == cur else ""
-        short_name = label.split()[0] + " " + label.split()[1]
+        # e.g. "3:4 Portrait (864x1152)" -> "3:4 Portrait"
+        short_name = " ".join(label.split()[:2])
         row.append(InlineKeyboardButton(f"{active}{short_name}", callback_data=f"set_aspect:{dim}"))
         if len(row) == 2:
             buttons.append(row)
@@ -366,10 +368,11 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     elif data == "toggle_mode":
-        if "Turbo" in pref["preset"]:
-            pref["preset"] = "ZI (Base - 28 Steps, CFG 4.0)"
-        else:
-            pref["preset"] = "ZIT (Turbo - 8 Steps, CFG 1.0)"
+        pref["preset"] = (
+            "ZI (Base - 28 Steps, CFG 4.0)"
+            if "Turbo" in pref["preset"]
+            else "ZIT (Turbo - 8 Steps, CFG 1.0)"
+        )
 
     elif data == "menu_pipeline":
         await query.edit_message_reply_markup(reply_markup=build_pipeline_keyboard(user.id))
@@ -419,10 +422,8 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data.startswith("set_sam:"):
         _, target, sam = data.split(":")
-        if target == "p1":
-            pref["sampler_pass1"] = sam
-        else:
-            pref["sampler_pass2"] = sam
+        key = "sampler_pass1" if target == "p1" else "sampler_pass2"
+        pref[key] = sam
 
     elif data == "menu_sched":
         await query.edit_message_reply_markup(reply_markup=build_scheduler_keyboard(user.id))
@@ -474,11 +475,11 @@ async def prompt_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     pref = get_user_pref(user.id)
 
-    # Resolve Seed
-    if pref["seed_mode"] == "random":
-        current_seed = random.randint(1, 2**48 - 1)
-    else:
-        current_seed = pref["fixed_seed"]
+    current_seed = (
+        random.randint(1, 2**48 - 1)
+        if pref["seed_mode"] == "random"
+        else pref["fixed_seed"]
+    )
 
     # Load base API graph
     with open(TEMPLATE_PATH, "r", encoding="utf-8") as f:
@@ -634,13 +635,10 @@ async def prompt_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         real_w, real_h = 0, 0
         file_size_mb = 0.0
         if local_output_path.exists():
-            try:
-                from PIL import Image
-                with Image.open(local_output_path) as im:
-                    real_w, real_h = im.size
-                file_size_mb = os.path.getsize(local_output_path) / (1024 * 1024)
-            except Exception:
-                pass
+            from PIL import Image
+            with Image.open(local_output_path) as im:
+                real_w, real_h = im.size
+            file_size_mb = local_output_path.stat().st_size / (1024 * 1024)
 
         await status_msg.edit_text("📤 Mengunggah gambar ke Telegram...")
 
@@ -676,7 +674,7 @@ async def prompt_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 except Exception as de:
                     logger.error(f"Gagal mengirim dokumen: {de}")
                     await update.message.reply_text(
-                        f"⚠️ **File 4K ({file_size_mb:.1f} MB) selesai dibuat**, namun gagal dikirim ke chat karena koneksi upload internet timeout.\n\n"
+                        f"⚠️ **File 4K ({file_size_mb:.1f} MB) selesai dibuat**, namun koneksi internet terputus saat pengunggahan.\n\n"
                         f"📁 File tetap tersimpan aman di PC Anda:\n`output/{filename}`",
                         parse_mode=ParseMode.MARKDOWN,
                     )
@@ -710,11 +708,12 @@ def main():
     config = load_config()
     token = config["telegram"]["bot_token"]
 
-    # Berikan batas waktu upload (write_timeout) hingga 180 detik (3 menit) untuk file 4K (~8-10 MB)
+    # Gunakan read_timeout & write_timeout = None (tanpa batas waktu buatan)
+    # Membiarkan file besar (4K ~8-10 MB) streaming sampai tuntas tanpa false alarm timeout
     request = HTTPXRequest(
         connect_timeout=30.0,
-        read_timeout=120.0,
-        write_timeout=180.0,
+        read_timeout=None,
+        write_timeout=None,
         pool_timeout=60.0,
     )
 
