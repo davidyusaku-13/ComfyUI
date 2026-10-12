@@ -78,11 +78,15 @@ def load_default_preferences() -> dict:
             if "13" in graph:
                 in13 = graph["13"].get("inputs", {})
                 defaults["preset"] = in13.get("preset", defaults["preset"])
-                defaults["sampler_pass1"] = in13.get("sampler_pass1", defaults["sampler_pass1"])
-                defaults["sampler_pass2"] = in13.get("sampler_pass2", defaults["sampler_pass2"])
+                defaults["sampler_pass1"] = in13.get("sampler", in13.get("sampler_pass1", defaults["sampler_pass1"]))
                 defaults["scheduler"] = in13.get("scheduler", defaults["scheduler"])
-                if "denoise_pass2" in in13:
-                    defaults["denoise_pass2"] = float(in13["denoise_pass2"])
+
+            if "29" in graph:
+                in29 = graph["29"].get("inputs", {})
+                if "sampler_name" in in29 and isinstance(in29["sampler_name"], str):
+                    defaults["sampler_pass2"] = in29["sampler_name"]
+                if "denoise" in in29 and isinstance(in29["denoise"], (int, float)):
+                    defaults["denoise_pass2"] = float(in29["denoise"])
 
             if "6" in graph:
                 defaults["dimensions"] = graph["6"].get("inputs", {}).get("dimensions", defaults["dimensions"])
@@ -530,10 +534,20 @@ async def prompt_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # 3. Model & Sampler Switch (Node 13)
     graph["13"]["inputs"]["preset"] = pref["preset"]
-    graph["13"]["inputs"]["sampler_pass1"] = pref["sampler_pass1"]
-    graph["13"]["inputs"]["sampler_pass2"] = pref["sampler_pass2"]
+    graph["13"]["inputs"]["sampler"] = pref["sampler_pass1"]
     graph["13"]["inputs"]["scheduler"] = pref["scheduler"]
-    graph["13"]["inputs"]["denoise_pass2"] = pref["denoise_pass2"]
+    graph["13"]["inputs"].pop("denoise_pass2", None)
+    graph["13"]["inputs"].pop("sampler_pass1", None)
+    graph["13"]["inputs"].pop("sampler_pass2", None)
+
+    # Configure Pass 2 (Node 29) directly
+    if "29" in graph:
+        is_turbo = "Turbo" in pref["preset"]
+        graph["29"]["inputs"]["steps"] = 8 if is_turbo else 20
+        graph["29"]["inputs"]["cfg"] = 1.0 if is_turbo else 4.0
+        graph["29"]["inputs"]["sampler_name"] = pref["sampler_pass2"]
+        graph["29"]["inputs"]["scheduler"] = pref["scheduler"]
+        graph["29"]["inputs"]["denoise"] = pref["denoise_pass2"]
 
     # 4. Master Seed (Node 68) & Dynamic File Prefixes
     graph["68"]["inputs"]["seed"] = current_seed

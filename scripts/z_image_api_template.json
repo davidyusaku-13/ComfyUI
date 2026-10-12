@@ -58,11 +58,11 @@
       ],
       "sampler_name": [
         "13",
-        6
+        3
       ],
       "scheduler": [
         "13",
-        8
+        4
       ],
       "denoise": 1.0,
       "model": [
@@ -118,12 +118,10 @@
   "13": {
     "inputs": {
       "preset": "ZIT (Turbo - 8 Steps, CFG 1.0)",
-      "sampler_pass1": "euler_ancestral",
-      "sampler_pass2": "dpmpp_sde",
+      "sampler": "euler_ancestral",
       "scheduler": "beta",
       "turbo_model": "z_image_turbo_int8_convrot.safetensors",
-      "base_model": "z_image_int8_convrot.safetensors",
-      "denoise_pass2": 0.32
+      "base_model": "z_image_int8_convrot.safetensors"
     },
     "class_type": "ZImagePresetLoader",
     "_meta": {
@@ -163,26 +161,11 @@
         "68",
         0
       ],
-      "steps": [
-        "13",
-        3
-      ],
-      "cfg": [
-        "13",
-        4
-      ],
-      "sampler_name": [
-        "13",
-        7
-      ],
-      "scheduler": [
-        "13",
-        8
-      ],
-      "denoise": [
-        "13",
-        5
-      ],
+      "steps": 8,
+      "cfg": 1.0,
+      "sampler_name": "dpmpp_sde",
+      "scheduler": "beta",
+      "denoise": 0.38,
       "model": [
         "15",
         0
