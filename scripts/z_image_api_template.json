@@ -196,7 +196,7 @@
         0
       ],
       "latent_image": [
-        "30",
+        "35",
         0
       ]
     },
@@ -207,16 +207,16 @@
   },
   "30": {
     "inputs": {
-      "upscale_method": "nearest-exact",
+      "upscale_method": "lanczos",
       "scale_by": 1.5,
-      "samples": [
-        "7",
+      "image": [
+        "9",
         0
       ]
     },
-    "class_type": "LatentUpscaleBy",
+    "class_type": "ImageScaleBy",
     "_meta": {
-      "title": "Latent Upscale 1.5x (Hi-Res)"
+      "title": "Image Upscale 1.5x (Lanczos)"
     }
   },
   "31": {
@@ -479,5 +479,21 @@
     "is_changed": [
       351971767740904
     ]
+  },
+  "35": {
+    "inputs": {
+      "pixels": [
+        "30",
+        0
+      ],
+      "vae": [
+        "5",
+        0
+      ]
+    },
+    "class_type": "VAEEncode",
+    "_meta": {
+      "title": "VAE Encode (Pass 2)"
+    }
   }
 }

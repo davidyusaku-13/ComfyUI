@@ -556,7 +556,7 @@ async def prompt_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if pipeline_mode == "draft":
         # Disconnect Pass 2 and SeedVR2 by removing their outputs
-        for nid in ["29", "30", "31", "32", "50", "51", "52", "53", "54", "55", "56", "57", "58", "59"]:
+        for nid in ["29", "30", "31", "32", "35", "50", "51", "52", "53", "54", "55", "56", "57", "58", "59"]:
             graph.pop(nid, None)
         target_save_node = "14"  # Save 1: Base
     elif pipeline_mode == "hires":
