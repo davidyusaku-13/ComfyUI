@@ -43,6 +43,20 @@ TEMPLATE_PATH = Path("scripts/z_image_api_template.json")
 # In-memory user preferences
 user_sessions = {}
 
+BASE_DIMS_MAP = {
+    "864x1152 ( 3:4 )": (224, 288),
+    "1024x1024 ( 1:1 )": (256, 256),
+    "720x1280 ( 9:16 )": (176, 320),
+    "1280x720 ( 16:9 )": (320, 176),
+    "1152x864 ( 4:3 )": (288, 224),
+    "832x1248 ( 2:3 )": (208, 312),
+    "1248x832 ( 3:2 )": (312, 208),
+    "896x1152 ( 7:9 )": (224, 288),
+    "1152x896 ( 9:7 )": (288, 224),
+    "1344x576 ( 21:9 )": (384, 160),
+    "576x1344 ( 9:21 )": (160, 384),
+}
+
 ALL_ASPECT_RATIOS = [
     ("3:4 Portrait (864x1152)", "864x1152 ( 3:4 )"),
     ("1:1 Square (1024x1024)", "1024x1024 ( 1:1 )"),
@@ -544,13 +558,22 @@ async def prompt_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if "6" in graph:
         graph["6"]["inputs"]["dimensions"] = pref["dimensions"]
     elif "69" in graph:
-        res_str = pref["dimensions"].split()[0]
-        try:
-            w, h = map(int, res_str.split("x"))
-            graph["69"]["inputs"]["width"] = w
-            graph["69"]["inputs"]["height"] = h
-        except Exception:
-            pass
+        dim_key = pref["dimensions"]
+        if dim_key in BASE_DIMS_MAP:
+            w, h = BASE_DIMS_MAP[dim_key]
+        else:
+            res_str = dim_key.split()[0]
+            try:
+                rw, rh = map(int, res_str.split("x"))
+                w = max(64, round(rw / 6 / 8) * 8)
+                h = max(64, round(rh / 6 / 8) * 8)
+            except Exception:
+                w, h = 224, 288
+        graph["69"]["inputs"]["width"] = w
+        graph["69"]["inputs"]["height"] = h
+
+    # Remove UI-only comparison node for Telegram headless executions
+    graph.pop("38", None)
 
     # 3. Model & Samplers
     is_turbo = "Turbo" in pref["preset"]
