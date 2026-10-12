@@ -68,7 +68,7 @@ def load_default_preferences() -> dict:
         "sampler_pass1": "euler_ancestral",
         "sampler_pass2": "dpmpp_sde",
         "scheduler": "beta",
-        "denoise_pass2": 0.45,
+        "denoise_pass2": 0.32,
     }
     if TEMPLATE_PATH.exists():
         try:
@@ -531,6 +531,7 @@ async def prompt_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     graph["13"]["inputs"]["sampler_pass1"] = pref["sampler_pass1"]
     graph["13"]["inputs"]["sampler_pass2"] = pref["sampler_pass2"]
     graph["13"]["inputs"]["scheduler"] = pref["scheduler"]
+    graph["13"]["inputs"]["denoise_pass2"] = pref["denoise_pass2"]
 
     # 4. Master Seed (Node 68) & Dynamic File Prefixes
     graph["68"]["inputs"]["seed"] = current_seed

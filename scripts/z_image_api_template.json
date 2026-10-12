@@ -122,7 +122,8 @@
       "sampler_pass2": "dpmpp_sde",
       "scheduler": "beta",
       "turbo_model": "z_image_turbo_int8_convrot.safetensors",
-      "base_model": "z_image_int8_convrot.safetensors"
+      "base_model": "z_image_int8_convrot.safetensors",
+      "denoise_pass2": 0.32
     },
     "class_type": "ZImagePresetLoader",
     "_meta": {
