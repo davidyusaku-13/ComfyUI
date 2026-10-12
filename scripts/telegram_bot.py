@@ -64,7 +64,7 @@ def load_default_preferences() -> dict:
         "lora_strength": 0.2,
         "seed_mode": "random",
         "fixed_seed": 351971767740904,
-        "pipeline_mode": "full",
+        "pipeline_mode": "direct",
         "sampler_pass1": "euler_ancestral",
         "sampler_pass2": "dpmpp_sde",
         "scheduler": "beta",
@@ -145,7 +145,7 @@ async def check_comfy_online(server_url: str) -> bool:
 def build_main_settings_keyboard(user_id: int) -> InlineKeyboardMarkup:
     pref = get_user_pref(user_id)
     is_turbo = "Turbo" in pref["preset"]
-    pipe_labels = {"full": "💎 4K SeedVR2", "hires": "⚡ Hi-Res 1.5x", "draft": "🚀 Draft Pass 1"}
+    pipe_labels = {"direct": "💎 Direct 4K", "full": "🏛️ Full 4K", "hires": "⚡ Hi-Res", "draft": "🚀 Draft"}
 
     mode_label = "Turbo (8s)" if is_turbo else "Base (28s)"
     pipe_label = pipe_labels.get(pref["pipeline_mode"], "4K")
@@ -178,7 +178,8 @@ def build_pipeline_keyboard(user_id: int) -> InlineKeyboardMarkup:
     cur = pref["pipeline_mode"]
 
     buttons = [
-        [InlineKeyboardButton(f"{'✅ ' if cur == 'full' else ''}💎 Full Studio 4K (Pass 1 + 2 + SeedVR2)", callback_data="set_pipe:full")],
+        [InlineKeyboardButton(f"{'✅ ' if cur == 'direct' else ''}💎 Direct 4K (Pass 1 ➔ SeedVR2 - Alami & Cepat)", callback_data="set_pipe:direct")],
+        [InlineKeyboardButton(f"{'✅ ' if cur == 'full' else ''}🏛️ Full Studio 4K (Pass 1 + 2 + SeedVR2)", callback_data="set_pipe:full")],
         [InlineKeyboardButton(f"{'✅ ' if cur == 'hires' else ''}⚡ Fast Hi-Res (Pass 1 + 2 Tanpa SeedVR2)", callback_data="set_pipe:hires")],
         [InlineKeyboardButton(f"{'✅ ' if cur == 'draft' else ''}🚀 Draft Cepat (Pass 1 Base Saja)", callback_data="set_pipe:draft")],
         [InlineKeyboardButton("🔙 Kembali", callback_data="menu_main")],
@@ -294,7 +295,8 @@ def build_scheduler_keyboard(user_id: int) -> InlineKeyboardMarkup:
 def format_settings_text(user_id: int) -> str:
     pref = get_user_pref(user_id)
     pipe_desc = {
-        "full": "💎 Full Studio 4K (Pass 1 + Pass 2 + SeedVR2 4K)",
+        "direct": "💎 Direct 4K (Pass 1 ➔ SeedVR2 - Alami & Cepat)",
+        "full": "🏛️ Full Studio 4K (Pass 1 + Pass 2 + SeedVR2 4K)",
         "hires": "⚡ Fast Hi-Res (Pass 1 + Pass 2 1.5x)",
         "draft": "🚀 Draft Cepat (Pass 1 Base Saja)",
     }
@@ -554,7 +556,14 @@ async def prompt_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     pipeline_mode = pref["pipeline_mode"]
     target_save_node = "59"  # Default 4K
 
-    if pipeline_mode == "draft":
+    if pipeline_mode == "direct":
+        # Disconnect Pass 2, route Pass 1 directly into SeedVR2
+        for nid in ["29", "30", "31", "32", "35"]:
+            graph.pop(nid, None)
+        graph["52"]["inputs"]["image"] = ["9", 0]
+        graph["52"]["inputs"]["scale_by"] = 3.0
+        target_save_node = "59"
+    elif pipeline_mode == "draft":
         # Disconnect Pass 2 and SeedVR2 by removing their outputs
         for nid in ["29", "30", "31", "32", "35", "50", "51", "52", "53", "54", "55", "56", "57", "58", "59"]:
             graph.pop(nid, None)
@@ -564,9 +573,14 @@ async def prompt_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         for nid in ["50", "51", "52", "53", "54", "55", "56", "57", "58", "59"]:
             graph.pop(nid, None)
         target_save_node = "32"  # Save 2: Hi-Res
+    else:  # full
+        graph["52"]["inputs"]["image"] = ["31", 0]
+        graph["52"]["inputs"]["scale_by"] = 2.0
+        target_save_node = "59"
 
     mode_label = {
-        "full": "💎 4K SeedVR2 Studio",
+        "direct": "💎 Direct 4K SeedVR2 Studio",
+        "full": "🏛️ Full 3-Pass 4K Studio",
         "hires": "⚡ Fast Hi-Res 1.5x",
         "draft": "🚀 Draft Cepat Pass 1",
     }[pipeline_mode]

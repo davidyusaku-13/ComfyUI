@@ -304,9 +304,9 @@
   "52": {
     "inputs": {
       "upscale_method": "lanczos",
-      "scale_by": 2.0,
+      "scale_by": 3.0,
       "image": [
-        "31",
+        "9",
         0
       ]
     },
