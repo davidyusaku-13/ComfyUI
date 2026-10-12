@@ -112,6 +112,11 @@ def load_default_preferences() -> dict:
         "seed_mode": "random",
         "fixed_seed": 351971767740904,
         "filename_prefix": "zi",
+        "weight_dtype": "default",
+        "lora_name": "NIceAsians_Zimage.safetensors",
+        "seedvr2_model": "seedvr2_3b_int8_convrot.safetensors",
+        "temporal_size": 64,
+        "temporal_overlap": 8,
         # AuraFlow Sampling
         "auraflow_shift": 6.0,
         # Pass 1
@@ -745,6 +750,18 @@ async def set_command_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         elif key in ["prefix", "filename_prefix"]:
             pref["filename_prefix"] = val
             await update.message.reply_text(f"✅ Filename Prefix diubah menjadi `{pref['filename_prefix']}`", parse_mode=ParseMode.MARKDOWN)
+        elif key in ["weight_dtype", "dtype"]:
+            pref["weight_dtype"] = val
+            await update.message.reply_text(f"✅ Weight Dtype diubah menjadi `{pref['weight_dtype']}`", parse_mode=ParseMode.MARKDOWN)
+        elif key in ["lora_file", "loraname", "lora_name"]:
+            pref["lora_name"] = val
+            await update.message.reply_text(f"✅ File LoRA diubah menjadi `{pref['lora_name']}`", parse_mode=ParseMode.MARKDOWN)
+        elif key in ["clip_lora", "lora_clip", "lora_clip_strength"]:
+            pref["lora_clip_strength"] = float(val)
+            await update.message.reply_text(f"✅ LoRA CLIP Strength diubah menjadi `{pref['lora_clip_strength']}`", parse_mode=ParseMode.MARKDOWN)
+        elif key in ["svr_model", "seedvr2_model"]:
+            pref["seedvr2_model"] = val
+            await update.message.reply_text(f"✅ SeedVR2 Model diubah menjadi `{pref['seedvr2_model']}`", parse_mode=ParseMode.MARKDOWN)
         else:
             await update.message.reply_text(f"⚠️ Parameter `{key}` tidak dikenal. Ketik `/set` tanpa argumen untuk melihat bantuan.", parse_mode=ParseMode.MARKDOWN)
     except ValueError:
@@ -1125,11 +1142,36 @@ async def execute_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE):
         graph["69"]["inputs"]["height"] = h
         graph["69"]["inputs"]["batch_size"] = pref.get("batch_size", 1)
 
-    # 3. Model UNET (Node 13) & AuraFlow Shift (Node 15)
+    # 3. Model UNET (Node 13 & 50) & AuraFlow Shift (Node 15)
     is_turbo = "Turbo" in pref["preset"]
     graph["13"]["inputs"]["unet_name"] = "z_image_turbo_int8_convrot.safetensors" if is_turbo else "z_image_int8_convrot.safetensors"
+    graph["13"]["inputs"]["weight_dtype"] = pref.get("weight_dtype", "default")
+
+    if "50" in graph:
+        graph["50"]["inputs"]["unet_name"] = pref.get("seedvr2_model", "seedvr2_3b_int8_convrot.safetensors")
+        graph["50"]["inputs"]["weight_dtype"] = pref.get("weight_dtype", "default")
+
     if "15" in graph:
         graph["15"]["inputs"]["shift"] = pref.get("auraflow_shift", 6.0)
+
+    # Negative Prompt handling (ZeroOut vs Custom Negative)
+    if neg_prompt_text:
+        graph["4"] = {
+            "class_type": "CLIPTextEncode",
+            "inputs": {
+                "text": neg_prompt_text,
+                "clip": ["67", 1],
+            },
+        }
+        if "7" in graph:
+            graph["7"]["inputs"]["negative"] = ["4", 0]
+        if "29" in graph:
+            graph["29"]["inputs"]["negative"] = ["4", 0]
+    else:
+        if "7" in graph:
+            graph["7"]["inputs"]["negative"] = ["12", 0]
+        if "29" in graph:
+            graph["29"]["inputs"]["negative"] = ["12", 0]
 
     # 4. Pass 1 KSampler (Node 7)
     if "7" in graph:
@@ -1165,10 +1207,14 @@ async def execute_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # 8. Tiled VAE Settings (Node 31, 54, 57)
     tile_size = pref.get("vae_tile_size", 512)
     tile_overlap = pref.get("vae_overlap", 64)
+    t_size = pref.get("temporal_size", 64)
+    t_overlap = pref.get("temporal_overlap", 8)
     for vn in ["31", "54", "57"]:
         if vn in graph:
             graph[vn]["inputs"]["tile_size"] = tile_size
             graph[vn]["inputs"]["overlap"] = tile_overlap
+            graph[vn]["inputs"]["temporal_size"] = t_size
+            graph[vn]["inputs"]["temporal_overlap"] = t_overlap
 
     # 9. Master Seed & File Prefixes
     fn_pfx = pref.get("filename_prefix", "zi")
@@ -1182,9 +1228,10 @@ async def execute_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # 10. LoRA (Node 67)
     lora_strength = pref["lora_strength"]
+    lora_file = pref.get("lora_name", "NIceAsians_Zimage.safetensors")
     graph["67"]["inputs"]["lora_1"] = {
         "on": lora_strength > 0,
-        "lora": "NIceAsians_Zimage.safetensors",
+        "lora": lora_file,
         "strength": lora_strength,
         "strengthTwo": pref.get("lora_clip_strength", lora_strength),
     }
