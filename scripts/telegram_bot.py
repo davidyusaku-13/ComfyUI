@@ -287,12 +287,16 @@ def build_advanced_keyboard(user_id: int) -> InlineKeyboardMarkup:
 def build_denoise_keyboard(user_id: int) -> InlineKeyboardMarkup:
     pref = get_user_pref(user_id)
     cur = pref["denoise_pass2"]
-    values = [0.35, 0.40, 0.45, 0.50, 0.55]
-    row = [
+    values = [0.28, 0.32, 0.35, 0.38, 0.42, 0.45]
+    row1 = [
         InlineKeyboardButton(f"{'✅ ' if v == cur else ''}{v}", callback_data=f"set_denoise:{v}")
-        for v in values
+        for v in values[:3]
     ]
-    return InlineKeyboardMarkup([row, [InlineKeyboardButton("🔙 Kembali ke Advanced", callback_data="menu_advanced")]])
+    row2 = [
+        InlineKeyboardButton(f"{'✅ ' if v == cur else ''}{v}", callback_data=f"set_denoise:{v}")
+        for v in values[3:]
+    ]
+    return InlineKeyboardMarkup([row1, row2, [InlineKeyboardButton("🔙 Kembali ke Advanced", callback_data="menu_advanced")]])
 
 
 def build_sampler_keyboard(target: str, user_id: int) -> InlineKeyboardMarkup:
