@@ -48,22 +48,10 @@
         "68",
         0
       ],
-      "steps": [
-        "13",
-        1
-      ],
-      "cfg": [
-        "13",
-        2
-      ],
-      "sampler_name": [
-        "13",
-        3
-      ],
-      "scheduler": [
-        "13",
-        4
-      ],
+      "steps": 8,
+      "cfg": 1.0,
+      "sampler_name": "euler_ancestral",
+      "scheduler": "beta",
       "denoise": 1.0,
       "model": [
         "15",
@@ -117,15 +105,12 @@
   },
   "13": {
     "inputs": {
-      "preset": "ZIT (Turbo - 8 Steps, CFG 1.0)",
-      "sampler": "euler_ancestral",
-      "scheduler": "beta",
-      "turbo_model": "z_image_turbo_int8_convrot.safetensors",
-      "base_model": "z_image_int8_convrot.safetensors"
+      "unet_name": "z_image_turbo_int8_convrot.safetensors",
+      "weight_dtype": "default"
     },
-    "class_type": "ZImagePresetLoader",
+    "class_type": "UNETLoader",
     "_meta": {
-      "title": "Z-Image Preset Switch (Turbo / Base)"
+      "title": "Load Diffusion Model (Z-Image)"
     }
   },
   "14": {

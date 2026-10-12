@@ -77,9 +77,16 @@ def load_default_preferences() -> dict:
 
             if "13" in graph:
                 in13 = graph["13"].get("inputs", {})
-                defaults["preset"] = in13.get("preset", defaults["preset"])
-                defaults["sampler_pass1"] = in13.get("sampler", in13.get("sampler_pass1", defaults["sampler_pass1"]))
-                defaults["scheduler"] = in13.get("scheduler", defaults["scheduler"])
+                unet_name = in13.get("unet_name", "")
+                if "turbo" in unet_name.lower():
+                    defaults["preset"] = "ZIT (Turbo - 8 Steps, CFG 1.0)"
+                elif unet_name:
+                    defaults["preset"] = "ZI (Base - 28 Steps, CFG 4.0)"
+
+            if "7" in graph:
+                in7 = graph["7"].get("inputs", {})
+                defaults["sampler_pass1"] = in7.get("sampler_name", defaults["sampler_pass1"])
+                defaults["scheduler"] = in7.get("scheduler", defaults["scheduler"])
 
             if "29" in graph:
                 in29 = graph["29"].get("inputs", {})
@@ -532,17 +539,18 @@ async def prompt_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # 2. Resolution Preset (Node 6)
     graph["6"]["inputs"]["dimensions"] = pref["dimensions"]
 
-    # 3. Model & Sampler Switch (Node 13)
-    graph["13"]["inputs"]["preset"] = pref["preset"]
-    graph["13"]["inputs"]["sampler"] = pref["sampler_pass1"]
-    graph["13"]["inputs"]["scheduler"] = pref["scheduler"]
-    graph["13"]["inputs"].pop("denoise_pass2", None)
-    graph["13"]["inputs"].pop("sampler_pass1", None)
-    graph["13"]["inputs"].pop("sampler_pass2", None)
+    # 3. Model & Samplers
+    is_turbo = "Turbo" in pref["preset"]
+    graph["13"]["inputs"]["unet_name"] = "z_image_turbo_int8_convrot.safetensors" if is_turbo else "z_image_int8_convrot.safetensors"
+
+    if "7" in graph:
+        graph["7"]["inputs"]["steps"] = 8 if is_turbo else 28
+        graph["7"]["inputs"]["cfg"] = 1.0 if is_turbo else 4.0
+        graph["7"]["inputs"]["sampler_name"] = pref["sampler_pass1"]
+        graph["7"]["inputs"]["scheduler"] = pref["scheduler"]
 
     # Configure Pass 2 (Node 29) directly
     if "29" in graph:
-        is_turbo = "Turbo" in pref["preset"]
         graph["29"]["inputs"]["steps"] = 8 if is_turbo else 20
         graph["29"]["inputs"]["cfg"] = 1.0 if is_turbo else 4.0
         graph["29"]["inputs"]["sampler_name"] = pref["sampler_pass2"]
