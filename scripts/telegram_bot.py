@@ -36,6 +36,7 @@ sys.stdout.reconfigure(encoding="utf-8")
 sys.stderr.reconfigure(encoding="utf-8")
 
 CONFIG_PATH = Path("scripts/config.telegram.toml")
+WORKFLOW_PATH = Path("user/default/workflows/z-image.json")
 TEMPLATE_PATH = Path("scripts/z_image_api_template.json")
 
 user_sessions = {}
@@ -117,14 +118,11 @@ def load_default_preferences() -> dict:
         "seedvr2_model": "seedvr2_3b_int8_convrot.safetensors",
         "temporal_size": 64,
         "temporal_overlap": 8,
-        # AuraFlow Sampling
         "auraflow_shift": 6.0,
-        # Pass 1
         "steps_pass1": 8,
         "cfg_pass1": 1.0,
         "sampler_pass1": "euler_ancestral",
         "scheduler": "beta",
-        # Pass 2
         "steps_pass2": 8,
         "cfg_pass2": 1.0,
         "sampler_pass2": "dpmpp_sde",
@@ -132,7 +130,6 @@ def load_default_preferences() -> dict:
         "denoise_pass2": 0.38,
         "latent_upscale_method": "bislerp",
         "latent_scale_by": 6.0,
-        # Pass 3 SeedVR2
         "seedvr2_scale_by": 2.0,
         "seedvr2_direct_scale": 3.0,
         "seedvr2_upscale_method": "lanczos",
@@ -141,11 +138,125 @@ def load_default_preferences() -> dict:
         "seedvr2_cfg": 1.0,
         "seedvr2_sampler": "dpmpp_sde",
         "seedvr2_scheduler": "beta",
-        # Tiled VAE
         "vae_tile_size": 512,
         "vae_overlap": 64,
     }
 
+    # 1. Primary Source of Truth: Web UI Workflow JSON
+    if WORKFLOW_PATH.exists():
+        try:
+            with open(WORKFLOW_PATH, "r", encoding="utf-8") as f:
+                wf = json.load(f)
+            nodes = {n["id"]: n for n in wf.get("nodes", [])}
+
+            # Node 13 (UNETLoader)
+            if 13 in nodes:
+                wv = nodes[13].get("widgets_values") or []
+                if wv and isinstance(wv[0], str):
+                    if "turbo" in wv[0].lower():
+                        defaults["preset"] = "ZIT (Turbo - 8 Steps, CFG 1.0)"
+                    else:
+                        defaults["preset"] = "ZI (Base - 28 Steps, CFG 4.0)"
+
+            # Node 15 (ModelSamplingAuraFlow)
+            if 15 in nodes:
+                wv = nodes[15].get("widgets_values") or []
+                if wv:
+                    defaults["auraflow_shift"] = float(wv[0])
+
+            # Node 7 (KSampler Pass 1)
+            if 7 in nodes:
+                wv = nodes[7].get("widgets_values") or []
+                if len(wv) >= 7:
+                    defaults["steps_pass1"] = int(wv[2])
+                    defaults["cfg_pass1"] = float(wv[3])
+                    defaults["sampler_pass1"] = str(wv[4])
+                    defaults["scheduler"] = str(wv[5])
+
+            # Node 70 (LatentUpscaleBy)
+            if 70 in nodes:
+                wv = nodes[70].get("widgets_values") or []
+                if len(wv) >= 2:
+                    defaults["latent_upscale_method"] = str(wv[0])
+                    defaults["latent_scale_by"] = float(wv[1])
+
+            # Node 29 (KSampler Pass 2)
+            if 29 in nodes:
+                wv = nodes[29].get("widgets_values") or []
+                if len(wv) >= 7:
+                    defaults["steps_pass2"] = int(wv[2])
+                    defaults["cfg_pass2"] = float(wv[3])
+                    defaults["sampler_pass2"] = str(wv[4])
+                    defaults["scheduler_pass2"] = str(wv[5])
+                    defaults["denoise_pass2"] = float(wv[6])
+
+            # Node 69 (EmptySD3LatentImage)
+            if 69 in nodes:
+                wv = nodes[69].get("widgets_values") or []
+                if len(wv) >= 3:
+                    defaults["custom_width"] = int(wv[0])
+                    defaults["custom_height"] = int(wv[1])
+                    defaults["batch_size"] = int(wv[2])
+
+            # Node 52 (ImageScaleBy)
+            if 52 in nodes:
+                wv = nodes[52].get("widgets_values") or []
+                if len(wv) >= 2:
+                    defaults["seedvr2_upscale_method"] = str(wv[0])
+                    defaults["seedvr2_scale_by"] = float(wv[1])
+
+            # Node 56 (KSampler SeedVR2)
+            if 56 in nodes:
+                wv = nodes[56].get("widgets_values") or []
+                if len(wv) >= 7:
+                    defaults["seedvr2_steps"] = int(wv[2])
+                    defaults["seedvr2_cfg"] = float(wv[3])
+                    defaults["seedvr2_sampler"] = str(wv[4])
+                    defaults["seedvr2_scheduler"] = str(wv[5])
+
+            # Node 58 (SeedVR2PostProcessing)
+            if 58 in nodes:
+                wv = nodes[58].get("widgets_values") or []
+                if wv:
+                    defaults["seedvr2_color_correction"] = str(wv[0])
+
+            # Node 31 / 54 / 57 (Tiled VAE)
+            for vid in [31, 54, 57]:
+                if vid in nodes:
+                    wv = nodes[vid].get("widgets_values") or []
+                    if len(wv) >= 4:
+                        defaults["vae_tile_size"] = int(wv[0])
+                        defaults["vae_overlap"] = int(wv[1])
+                        defaults["temporal_size"] = int(wv[2])
+                        defaults["temporal_overlap"] = int(wv[3])
+                        break
+
+            # Node 67 (Power Lora Loader)
+            if 67 in nodes:
+                wv = nodes[67].get("widgets_values") or []
+                for item in wv:
+                    if isinstance(item, dict) and "strength" in item and "lora" in item:
+                        defaults["lora_name"] = str(item.get("lora", defaults["lora_name"]))
+                        defaults["lora_strength"] = float(item.get("strength", defaults["lora_strength"]))
+                        s2 = item.get("strengthTwo")
+                        defaults["lora_clip_strength"] = float(s2) if s2 is not None else defaults["lora_strength"]
+                        break
+
+            # Node 68 (Seed rgthree)
+            if 68 in nodes:
+                wv = nodes[68].get("widgets_values") or []
+                if wv:
+                    defaults["fixed_seed"] = int(wv[0])
+                    if len(wv) > 1 and str(wv[1]).lower() == "randomize":
+                        defaults["seed_mode"] = "random"
+                    else:
+                        defaults["seed_mode"] = "fixed"
+
+            return defaults
+        except Exception as e:
+            print(f"Warning: Gagal membaca workflow '{WORKFLOW_PATH}': {e}")
+
+    # 2. Fallback to API Template
     if TEMPLATE_PATH.exists():
         try:
             with open(TEMPLATE_PATH, "r", encoding="utf-8") as f:
