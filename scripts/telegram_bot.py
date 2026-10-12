@@ -102,11 +102,18 @@ def load_default_preferences() -> dict:
     defaults = {
         "preset": "ZIT (Turbo - 8 Steps, CFG 1.0)",
         "dimensions": "864x1152 ( 3:4 )",
+        "custom_width": 224,
+        "custom_height": 288,
+        "batch_size": 1,
         "pipeline_mode": "direct",
         "lora_strength": 0.8,
+        "lora_clip_strength": 0.8,
         "trigger_prefix": True,
         "seed_mode": "random",
         "fixed_seed": 351971767740904,
+        "filename_prefix": "zi",
+        # AuraFlow Sampling
+        "auraflow_shift": 6.0,
         # Pass 1
         "steps_pass1": 8,
         "cfg_pass1": 1.0,
@@ -125,6 +132,13 @@ def load_default_preferences() -> dict:
         "seedvr2_direct_scale": 3.0,
         "seedvr2_upscale_method": "lanczos",
         "seedvr2_color_correction": "lab",
+        "seedvr2_steps": 1,
+        "seedvr2_cfg": 1.0,
+        "seedvr2_sampler": "dpmpp_sde",
+        "seedvr2_scheduler": "beta",
+        # Tiled VAE
+        "vae_tile_size": 512,
+        "vae_overlap": 64,
     }
 
     if TEMPLATE_PATH.exists():
@@ -138,6 +152,15 @@ def load_default_preferences() -> dict:
                     defaults["preset"] = "ZIT (Turbo - 8 Steps, CFG 1.0)"
                 elif unet_name:
                     defaults["preset"] = "ZI (Base - 28 Steps, CFG 4.0)"
+
+            if "15" in graph:
+                defaults["auraflow_shift"] = float(graph["15"].get("inputs", {}).get("shift", defaults["auraflow_shift"]))
+
+            if "69" in graph:
+                in69 = graph["69"].get("inputs", {})
+                defaults["custom_width"] = int(in69.get("width", defaults["custom_width"]))
+                defaults["custom_height"] = int(in69.get("height", defaults["custom_height"]))
+                defaults["batch_size"] = int(in69.get("batch_size", defaults["batch_size"]))
 
             if "7" in graph:
                 in7 = graph["7"].get("inputs", {})
@@ -160,10 +183,21 @@ def load_default_preferences() -> dict:
                 if "denoise" in in29 and isinstance(in29["denoise"], (int, float)):
                     defaults["denoise_pass2"] = float(in29["denoise"])
 
+            if "31" in graph:
+                defaults["vae_tile_size"] = int(graph["31"].get("inputs", {}).get("tile_size", defaults["vae_tile_size"]))
+                defaults["vae_overlap"] = int(graph["31"].get("inputs", {}).get("overlap", defaults["vae_overlap"]))
+
             if "52" in graph:
                 in52 = graph["52"].get("inputs", {})
                 defaults["seedvr2_upscale_method"] = in52.get("upscale_method", defaults["seedvr2_upscale_method"])
                 defaults["seedvr2_scale_by"] = float(in52.get("scale_by", defaults["seedvr2_scale_by"]))
+
+            if "56" in graph:
+                in56 = graph["56"].get("inputs", {})
+                defaults["seedvr2_steps"] = int(in56.get("steps", defaults["seedvr2_steps"]))
+                defaults["seedvr2_cfg"] = float(in56.get("cfg", defaults["seedvr2_cfg"]))
+                defaults["seedvr2_sampler"] = in56.get("sampler_name", defaults["seedvr2_sampler"])
+                defaults["seedvr2_scheduler"] = in56.get("scheduler", defaults["seedvr2_scheduler"])
 
             if "58" in graph:
                 defaults["seedvr2_color_correction"] = graph["58"].get("inputs", {}).get("color_correction_method", defaults["seedvr2_color_correction"])
@@ -172,6 +206,7 @@ def load_default_preferences() -> dict:
                 lora_cfg = graph["67"].get("inputs", {}).get("lora_1", {})
                 if isinstance(lora_cfg, dict) and "strength" in lora_cfg:
                     defaults["lora_strength"] = float(lora_cfg["strength"])
+                    defaults["lora_clip_strength"] = float(lora_cfg.get("strengthTwo", defaults["lora_strength"]))
 
             if "68" in graph:
                 seed_val = int(graph["68"].get("inputs", {}).get("seed", -1))
@@ -238,10 +273,15 @@ def build_main_settings_keyboard(user_id: int) -> InlineKeyboardMarkup:
             InlineKeyboardButton(f"🎲 Seed: {seed_label}", callback_data="menu_seed"),
         ],
         [
-            InlineKeyboardButton(f"🔤 Trigger Word: {prefix_label}", callback_data="toggle_trigger"),
-            InlineKeyboardButton("🔄 Reset Default", callback_data="reset_settings"),
+            InlineKeyboardButton(f"🌊 Shift: {pref['auraflow_shift']}", callback_data="menu_shift"),
+            InlineKeyboardButton(f"📦 Batch: {pref['batch_size']}", callback_data="menu_batch"),
         ],
         [
+            InlineKeyboardButton(f"🧩 VAE Tile: {pref['vae_tile_size']}", callback_data="menu_tile"),
+            InlineKeyboardButton(f"🔤 Trigger: {prefix_label}", callback_data="toggle_trigger"),
+        ],
+        [
+            InlineKeyboardButton("🔄 Reset Default", callback_data="reset_settings"),
             InlineKeyboardButton("❌ Tutup Menu", callback_data="close_menu"),
         ],
     ]
@@ -285,16 +325,10 @@ def build_aspect_keyboard(user_id: int) -> InlineKeyboardMarkup:
 def build_lora_keyboard(user_id: int) -> InlineKeyboardMarkup:
     pref = get_user_pref(user_id)
     cur = pref["lora_strength"]
-    strengths = [0.0, 0.4, 0.6, 0.8, 1.0, 1.2, 1.5]
+    strengths = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.5]
 
-    row1 = [
-        InlineKeyboardButton(f"{'✅ ' if s == cur else ''}{s}{' (Off)' if s == 0 else ''}", callback_data=f"set_lora:{s}")
-        for s in strengths[:4]
-    ]
-    row2 = [
-        InlineKeyboardButton(f"{'✅ ' if s == cur else ''}{s}", callback_data=f"set_lora:{s}")
-        for s in strengths[4:]
-    ]
+    row1 = [InlineKeyboardButton(f"{'✅ ' if s == cur else ''}{s}{' (Off)' if s == 0 else ''}", callback_data=f"set_lora:{s}") for s in strengths[:4]]
+    row2 = [InlineKeyboardButton(f"{'✅ ' if s == cur else ''}{s}", callback_data=f"set_lora:{s}") for s in strengths[4:]]
     return InlineKeyboardMarkup([row1, row2, [InlineKeyboardButton("🔙 Kembali ke Menu Utama", callback_data="menu_main")]])
 
 
@@ -307,12 +341,8 @@ def build_seed_keyboard(user_id: int) -> InlineKeyboardMarkup:
             InlineKeyboardButton(f"{'✅ ' if mode == 'random' else ''}🎲 Acak Tiap Generate", callback_data="set_seed_mode:random"),
             InlineKeyboardButton(f"{'✅ ' if mode == 'fixed' else ''}🔒 Kunci Seed Ini", callback_data="set_seed_mode:fixed"),
         ],
-        [
-            InlineKeyboardButton("🎲 Roll Seed Baru Acak", callback_data="set_seed_roll"),
-        ],
-        [
-            InlineKeyboardButton("🔙 Kembali ke Menu Utama", callback_data="menu_main"),
-        ],
+        [InlineKeyboardButton("🎲 Roll Seed Baru Acak", callback_data="set_seed_roll")],
+        [InlineKeyboardButton("🔙 Kembali ke Menu Utama", callback_data="menu_main")],
     ]
     return InlineKeyboardMarkup(buttons)
 
@@ -437,8 +467,12 @@ def build_seedvr2_keyboard(user_id: int) -> InlineKeyboardMarkup:
             InlineKeyboardButton(f"Pass 2 Scale: {pref['seedvr2_scale_by']}x", callback_data="menu_svr_scale"),
         ],
         [
-            InlineKeyboardButton(f"Upscale Method: {pref['seedvr2_upscale_method']}", callback_data="menu_svr_method"),
+            InlineKeyboardButton(f"Upscale: {pref['seedvr2_upscale_method']}", callback_data="menu_svr_method"),
             InlineKeyboardButton(f"Color: {pref['seedvr2_color_correction']}", callback_data="menu_svr_color"),
+        ],
+        [
+            InlineKeyboardButton(f"SVR Steps: {pref['seedvr2_steps']}", callback_data="menu_svr_steps"),
+            InlineKeyboardButton(f"SVR Sampler: {pref['seedvr2_sampler'][:8]}", callback_data="menu_svr_sam"),
         ],
         [InlineKeyboardButton("🔙 Kembali ke Menu Utama", callback_data="menu_main")],
     ]
@@ -470,10 +504,56 @@ def build_svr_color_keyboard(user_id: int) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([row, [InlineKeyboardButton("🔙 Kembali ke SeedVR2", callback_data="menu_seedvr2")]])
 
 
+def build_svr_steps_keyboard(user_id: int) -> InlineKeyboardMarkup:
+    pref = get_user_pref(user_id)
+    cur = pref["seedvr2_steps"]
+    steps = [1, 2, 3]
+    row = [InlineKeyboardButton(f"{'✅ ' if s == cur else ''}{s}", callback_data=f"set_svr_steps:{s}") for s in steps]
+    return InlineKeyboardMarkup([row, [InlineKeyboardButton("🔙 Kembali ke SeedVR2", callback_data="menu_seedvr2")]])
+
+
+# ==========================================
+# SHIFT, BATCH, TILE SUB-MENUS
+# ==========================================
+
+def build_shift_keyboard(user_id: int) -> InlineKeyboardMarkup:
+    pref = get_user_pref(user_id)
+    cur = pref["auraflow_shift"]
+    shifts = [1.0, 3.0, 3.16, 4.0, 5.0, 6.0, 8.0]
+    r1 = [InlineKeyboardButton(f"{'✅ ' if s == cur else ''}{s}", callback_data=f"set_shift:{s}") for s in shifts[:4]]
+    r2 = [InlineKeyboardButton(f"{'✅ ' if s == cur else ''}{s}", callback_data=f"set_shift:{s}") for s in shifts[4:]]
+    return InlineKeyboardMarkup([r1, r2, [InlineKeyboardButton("🔙 Kembali ke Menu Utama", callback_data="menu_main")]])
+
+
+def build_batch_keyboard(user_id: int) -> InlineKeyboardMarkup:
+    pref = get_user_pref(user_id)
+    cur = pref["batch_size"]
+    batches = [1, 2, 3, 4]
+    row = [InlineKeyboardButton(f"{'✅ ' if b == cur else ''}{b}", callback_data=f"set_batch:{b}") for b in batches]
+    return InlineKeyboardMarkup([row, [InlineKeyboardButton("🔙 Kembali ke Menu Utama", callback_data="menu_main")]])
+
+
+def build_tile_keyboard(user_id: int) -> InlineKeyboardMarkup:
+    pref = get_user_pref(user_id)
+    cur = pref["vae_tile_size"]
+    tiles = [256, 384, 512, 768, 1024]
+    row = [InlineKeyboardButton(f"{'✅ ' if t == cur else ''}{t}", callback_data=f"set_tile:{t}") for t in tiles]
+    return InlineKeyboardMarkup([row, [InlineKeyboardButton("🔙 Kembali ke Menu Utama", callback_data="menu_main")]])
+
+
 # Generic Sampler/Scheduler Selectors
 def build_generic_sampler_keyboard(target: str, user_id: int) -> InlineKeyboardMarkup:
     pref = get_user_pref(user_id)
-    cur = pref["sampler_pass1"] if target == "p1" else pref["sampler_pass2"]
+    if target == "p1":
+        cur = pref["sampler_pass1"]
+        back_target = "menu_pass1"
+    elif target == "p2":
+        cur = pref["sampler_pass2"]
+        back_target = "menu_pass2"
+    else:
+        cur = pref["seedvr2_sampler"]
+        back_target = "menu_seedvr2"
+
     buttons = []
     row = []
     for s in SAMPLERS_LIST:
@@ -484,14 +564,22 @@ def build_generic_sampler_keyboard(target: str, user_id: int) -> InlineKeyboardM
             row = []
     if row:
         buttons.append(row)
-    back_target = "menu_pass1" if target == "p1" else "menu_pass2"
     buttons.append([InlineKeyboardButton("🔙 Kembali", callback_data=back_target)])
     return InlineKeyboardMarkup(buttons)
 
 
 def build_generic_scheduler_keyboard(target: str, user_id: int) -> InlineKeyboardMarkup:
     pref = get_user_pref(user_id)
-    cur = pref["scheduler"] if target == "p1" else pref.get("scheduler_pass2", pref["scheduler"])
+    if target == "p1":
+        cur = pref["scheduler"]
+        back_target = "menu_pass1"
+    elif target == "p2":
+        cur = pref.get("scheduler_pass2", pref["scheduler"])
+        back_target = "menu_pass2"
+    else:
+        cur = pref["seedvr2_scheduler"]
+        back_target = "menu_seedvr2"
+
     buttons = []
     row = []
     for sc in SCHEDULERS_LIST:
@@ -502,7 +590,6 @@ def build_generic_scheduler_keyboard(target: str, user_id: int) -> InlineKeyboar
             row = []
     if row:
         buttons.append(row)
-    back_target = "menu_pass1" if target == "p1" else "menu_pass2"
     buttons.append([InlineKeyboardButton("🔙 Kembali", callback_data=back_target)])
     return InlineKeyboardMarkup(buttons)
 
@@ -516,20 +603,19 @@ def format_settings_text(user_id: int) -> str:
         "draft": "🚀 Draft Cepat (Pass 1 Base Saja)",
     }
     seed_text = "Acak Tiap Generate" if pref["seed_mode"] == "random" else f"Terkunci ({pref['fixed_seed']})"
-    trigger_status = "Aktif (Otomatis Tambah '2s12an5, ')" if pref.get("trigger_prefix", True) else "Mati"
+    trigger_status = "Aktif ('2s12an5, ')" if pref.get("trigger_prefix", True) else "Mati"
 
     return (
         "⚙️ **PANEL KONTROL STUDIO COMFYUI (100% EXPOSED)**\n\n"
-        f"• **Model:** `{pref['preset']}`\n"
+        f"• **Model:** `{pref['preset']}` | **Shift:** `{pref['auraflow_shift']}`\n"
         f"• **Alur:** `{pipe_desc.get(pref['pipeline_mode'])}`\n"
-        f"• **Ukuran:** `{pref['dimensions']}`\n"
-        f"• **Trigger Word:** `{trigger_status}`\n"
-        f"• **Kekuatan LoRA:** `{pref['lora_strength']}`\n"
-        f"• **Master Seed:** `{seed_text}`\n\n"
+        f"• **Ukuran:** `{pref['dimensions']}` | **Batch:** `{pref['batch_size']}`\n"
+        f"• **Trigger Word:** `{trigger_status}` | **LoRA:** `{pref['lora_strength']}`\n"
+        f"• **Master Seed:** `{seed_text}` | **VAE Tile:** `{pref['vae_tile_size']}px`\n\n"
         f"🎛️ **Pass 1:** Steps: `{pref['steps_pass1']}` | CFG: `{pref['cfg_pass1']}` | Sampler: `{pref['sampler_pass1']}` | Sched: `{pref['scheduler']}`\n"
         f"🔬 **Pass 2:** Denoise: `{pref['denoise_pass2']}` | Steps: `{pref['steps_pass2']}` | CFG: `{pref['cfg_pass2']}` | Upscale: `{pref['latent_upscale_method']} ({pref['latent_scale_by']}x)` | Sampler: `{pref['sampler_pass2']}`\n"
-        f"🧬 **SeedVR2:** Direct Scale: `{pref.get('seedvr2_direct_scale', 3.0)}x` | P2 Scale: `{pref['seedvr2_scale_by']}x` | Method: `{pref['seedvr2_upscale_method']}` | Color: `{pref['seedvr2_color_correction']}`\n\n"
-        "💡 *Tips: Anda juga bisa mengetik perintah cepat `/set <parameter> <nilai>` kapan saja.*"
+        f"🧬 **SeedVR2:** Direct Scale: `{pref.get('seedvr2_direct_scale', 3.0)}x` | P2 Scale: `{pref['seedvr2_scale_by']}x` | Steps: `{pref['seedvr2_steps']}` | Method: `{pref['seedvr2_upscale_method']}` | Color: `{pref['seedvr2_color_correction']}`\n\n"
+        "💡 *Ketik `/set <param> <nilai>` untuk mengubah nilai bebas apapun kapan saja.*"
     )
 
 
@@ -552,11 +638,11 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = (
         f"Halo **{user.first_name}**! 🎨\n\n"
         f"🖥️ **Status ComfyUI:** {status_str}\n\n"
-        "💡 **Cara Pakai:**\n"
-        "• Ketik /settings untuk membuka panel kontrol studio lengkap (100% parameter web).\n"
-        "• Ketik /set `<parameter>` `<nilai>` untuk mengubah nilai spesifik cepat (misal `/set denoise 0.35`).\n"
-        "• Ketik /seed untuk melihat atau mengunci seed aktif.\n"
-        "• Kirim prompt teks apa pun langsung ke sini untuk mulai generate gambar 4K!\n"
+        "💡 **Panduan Kontrol Studio Penuh:**\n"
+        "• Ketik /settings untuk membuka panel kontrol studio interaktif lengkap.\n"
+        "• Ketik /set `<param>` `<nilai>` untuk mengubah parameter apa saja bebas (contoh: `/set shift 3.16`, `/set denoise 0.35`, `/set batch 2`, `/set tile 768`).\n"
+        "• Ketik /seed untuk mengecek atau mengunci seed aktif.\n"
+        "• Kirim prompt apa saja untuk mulai render studio 4K!\n"
     )
     await update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
 
@@ -583,17 +669,23 @@ async def set_command_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
     args = context.args
     if len(args) < 2:
         help_msg = (
-            "🛠️ **Format Penggunaan /set:**\n"
-            "`/set <parameter> <nilai>`\n\n"
-            "Contoh yang didukung:\n"
-            "• `/set denoise 0.35`\n"
-            "• `/set steps 10`\n"
-            "• `/set cfg 1.5`\n"
-            "• `/set p2steps 12`\n"
-            "• `/set p2cfg 1.0`\n"
-            "• `/set lora 0.6`\n"
-            "• `/set seed 123456789`\n"
-            "• `/set scale 5.0`\n"
+            "🛠️ **Daftar Parameter Lengkap /set:**\n\n"
+            "• `/set shift <float>` (misal `/set shift 3.16` atau `/set shift 6.0`)\n"
+            "• `/set batch <int>` (misal `/set batch 2`)\n"
+            "• `/set denoise <float>` (misal `/set denoise 0.35`)\n"
+            "• `/set steps <int>` (Pass 1 steps)\n"
+            "• `/set cfg <float>` (Pass 1 CFG)\n"
+            "• `/set p2steps <int>` (Pass 2 steps)\n"
+            "• `/set p2cfg <float>` (Pass 2 CFG)\n"
+            "• `/set scale <float>` (Latent scale 6.0x)\n"
+            "• `/set svrscale <float>` (SeedVR2 scale)\n"
+            "• `/set svrsteps <int>` (SeedVR2 steps)\n"
+            "• `/set svrcfg <float>` (SeedVR2 CFG)\n"
+            "• `/set tile <int>` (VAE tile size: 256, 512, 768)\n"
+            "• `/set overlap <int>` (VAE overlap)\n"
+            "• `/set lora <float>` (LoRA strength)\n"
+            "• `/set seed <int>` (Lock master seed)\n"
+            "• `/set prefix <str>` (Filename prefix)\n"
         )
         await update.message.reply_text(help_msg, parse_mode=ParseMode.MARKDOWN)
         return
@@ -603,7 +695,19 @@ async def set_command_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
     pref = get_user_pref(user.id)
 
     try:
-        if key in ["denoise", "p2denoise", "denoise_pass2"]:
+        if key in ["shift", "auraflow_shift"]:
+            pref["auraflow_shift"] = float(val)
+            await update.message.reply_text(f"✅ AuraFlow Shift diubah menjadi `{pref['auraflow_shift']}`", parse_mode=ParseMode.MARKDOWN)
+        elif key in ["batch", "batch_size"]:
+            pref["batch_size"] = max(1, min(16, int(val)))
+            await update.message.reply_text(f"✅ Batch Size diubah menjadi `{pref['batch_size']}`", parse_mode=ParseMode.MARKDOWN)
+        elif key in ["tile", "tile_size", "vae_tile_size"]:
+            pref["vae_tile_size"] = int(val)
+            await update.message.reply_text(f"✅ VAE Tile Size diubah menjadi `{pref['vae_tile_size']}`px", parse_mode=ParseMode.MARKDOWN)
+        elif key in ["overlap", "vae_overlap"]:
+            pref["vae_overlap"] = int(val)
+            await update.message.reply_text(f"✅ VAE Overlap diubah menjadi `{pref['vae_overlap']}`px", parse_mode=ParseMode.MARKDOWN)
+        elif key in ["denoise", "p2denoise", "denoise_pass2"]:
             pref["denoise_pass2"] = float(val)
             await update.message.reply_text(f"✅ Pass 2 Denoise diubah menjadi `{pref['denoise_pass2']}`", parse_mode=ParseMode.MARKDOWN)
         elif key in ["steps", "p1steps", "steps_pass1"]:
@@ -618,6 +722,16 @@ async def set_command_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         elif key in ["p2cfg", "cfg_pass2"]:
             pref["cfg_pass2"] = float(val)
             await update.message.reply_text(f"✅ Pass 2 CFG diubah menjadi `{pref['cfg_pass2']}`", parse_mode=ParseMode.MARKDOWN)
+        elif key in ["svrsteps", "seedvr2_steps"]:
+            pref["seedvr2_steps"] = int(val)
+            await update.message.reply_text(f"✅ SeedVR2 Steps diubah menjadi `{pref['seedvr2_steps']}`", parse_mode=ParseMode.MARKDOWN)
+        elif key in ["svrcfg", "seedvr2_cfg"]:
+            pref["seedvr2_cfg"] = float(val)
+            await update.message.reply_text(f"✅ SeedVR2 CFG diubah menjadi `{pref['seedvr2_cfg']}`", parse_mode=ParseMode.MARKDOWN)
+        elif key in ["svrscale", "seedvr2_scale"]:
+            pref["seedvr2_scale_by"] = float(val)
+            pref["seedvr2_direct_scale"] = float(val)
+            await update.message.reply_text(f"✅ SeedVR2 Scale diubah menjadi `{val}x`", parse_mode=ParseMode.MARKDOWN)
         elif key in ["lora", "lora_strength"]:
             pref["lora_strength"] = float(val)
             await update.message.reply_text(f"✅ LoRA Strength diubah menjadi `{pref['lora_strength']}`", parse_mode=ParseMode.MARKDOWN)
@@ -628,6 +742,9 @@ async def set_command_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
         elif key in ["scale", "latent_scale"]:
             pref["latent_scale_by"] = float(val)
             await update.message.reply_text(f"✅ Latent Scale diubah menjadi `{pref['latent_scale_by']}x`", parse_mode=ParseMode.MARKDOWN)
+        elif key in ["prefix", "filename_prefix"]:
+            pref["filename_prefix"] = val
+            await update.message.reply_text(f"✅ Filename Prefix diubah menjadi `{pref['filename_prefix']}`", parse_mode=ParseMode.MARKDOWN)
         else:
             await update.message.reply_text(f"⚠️ Parameter `{key}` tidak dikenal. Ketik `/set` tanpa argumen untuk melihat bantuan.", parse_mode=ParseMode.MARKDOWN)
     except ValueError:
@@ -735,6 +852,28 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_reply_markup(reply_markup=build_seed_keyboard(user.id))
         return
 
+    # Shift, Batch, Tile Menus
+    elif data == "menu_shift":
+        await query.edit_message_reply_markup(reply_markup=build_shift_keyboard(user.id))
+        return
+
+    elif data.startswith("set_shift:"):
+        pref["auraflow_shift"] = float(data.split("set_shift:")[1])
+
+    elif data == "menu_batch":
+        await query.edit_message_reply_markup(reply_markup=build_batch_keyboard(user.id))
+        return
+
+    elif data.startswith("set_batch:"):
+        pref["batch_size"] = int(data.split("set_batch:")[1])
+
+    elif data == "menu_tile":
+        await query.edit_message_reply_markup(reply_markup=build_tile_keyboard(user.id))
+        return
+
+    elif data.startswith("set_tile:"):
+        pref["vae_tile_size"] = int(data.split("set_tile:")[1])
+
     # Pass 1 sub-menus
     elif data == "menu_pass1":
         await query.edit_message_reply_markup(reply_markup=build_pass1_keyboard(user.id))
@@ -827,9 +966,15 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Generic Sampler/Scheduler Callbacks
     elif data.startswith("set_sam:"):
         _, target, sam = data.split(":")
-        key = "sampler_pass1" if target == "p1" else "sampler_pass2"
-        pref[key] = sam
-        target_menu = build_pass1_keyboard(user.id) if target == "p1" else build_pass2_keyboard(user.id)
+        if target == "p1":
+            pref["sampler_pass1"] = sam
+            target_menu = build_pass1_keyboard(user.id)
+        elif target == "p2":
+            pref["sampler_pass2"] = sam
+            target_menu = build_pass2_keyboard(user.id)
+        else:
+            pref["seedvr2_sampler"] = sam
+            target_menu = build_seedvr2_keyboard(user.id)
         await query.edit_message_reply_markup(reply_markup=target_menu)
         return
 
@@ -837,9 +982,13 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         _, target, sc = data.split(":")
         if target == "p1":
             pref["scheduler"] = sc
-        else:
+            target_menu = build_pass1_keyboard(user.id)
+        elif target == "p2":
             pref["scheduler_pass2"] = sc
-        target_menu = build_pass1_keyboard(user.id) if target == "p1" else build_pass2_keyboard(user.id)
+            target_menu = build_pass2_keyboard(user.id)
+        else:
+            pref["seedvr2_scheduler"] = sc
+            target_menu = build_seedvr2_keyboard(user.id)
         await query.edit_message_reply_markup(reply_markup=target_menu)
         return
 
@@ -884,6 +1033,19 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_reply_markup(reply_markup=build_seedvr2_keyboard(user.id))
         return
 
+    elif data == "menu_svr_steps":
+        await query.edit_message_reply_markup(reply_markup=build_svr_steps_keyboard(user.id))
+        return
+
+    elif data.startswith("set_svr_steps:"):
+        pref["seedvr2_steps"] = int(data.split("set_svr_steps:")[1])
+        await query.edit_message_reply_markup(reply_markup=build_seedvr2_keyboard(user.id))
+        return
+
+    elif data == "menu_svr_sam":
+        await query.edit_message_reply_markup(reply_markup=build_generic_sampler_keyboard("svr", user.id))
+        return
+
     elif data == "reset_settings":
         user_sessions[user.id] = load_default_preferences()
 
@@ -921,8 +1083,17 @@ async def execute_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⚠️ ComfyUI backend sedang offline.\nSilakan jalankan `uv run main.py --cuda-device 0` di PC Anda.")
         return
 
-    prompt_text = update.message.text.strip()
+    raw_text = update.message.text.strip()
     pref = get_user_pref(user.id)
+
+    # Negative Prompt handling via --neg flag
+    neg_prompt_text = ""
+    if "--neg" in raw_text:
+        parts = raw_text.split("--neg", 1)
+        prompt_text = parts[0].strip()
+        neg_prompt_text = parts[1].strip()
+    else:
+        prompt_text = raw_text
 
     # Trigger Word prefix handling
     if pref.get("trigger_prefix", True) and not prompt_text.startswith("2s12an5"):
@@ -941,7 +1112,7 @@ async def execute_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # 1. Positive Prompt (Node 3)
     graph["3"]["inputs"]["text"] = prompt_text
 
-    # 2. Resolution Preset (Node 6 or 69)
+    # 2. Base Dimensions & Batch (Node 69)
     if "6" in graph:
         graph["6"]["inputs"]["dimensions"] = pref["dimensions"]
     elif "69" in graph:
@@ -949,19 +1120,16 @@ async def execute_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if dim_key in BASE_DIMS_MAP:
             w, h = BASE_DIMS_MAP[dim_key]
         else:
-            res_str = dim_key.split()[0]
-            try:
-                rw, rh = map(int, res_str.split("x"))
-                w = max(64, round(rw / 6 / 8) * 8)
-                h = max(64, round(rh / 6 / 8) * 8)
-            except Exception:
-                w, h = 224, 288
+            w, h = pref.get("custom_width", 224), pref.get("custom_height", 288)
         graph["69"]["inputs"]["width"] = w
         graph["69"]["inputs"]["height"] = h
+        graph["69"]["inputs"]["batch_size"] = pref.get("batch_size", 1)
 
-    # 3. Model UNET (Node 13)
+    # 3. Model UNET (Node 13) & AuraFlow Shift (Node 15)
     is_turbo = "Turbo" in pref["preset"]
     graph["13"]["inputs"]["unet_name"] = "z_image_turbo_int8_convrot.safetensors" if is_turbo else "z_image_int8_convrot.safetensors"
+    if "15" in graph:
+        graph["15"]["inputs"]["shift"] = pref.get("auraflow_shift", 6.0)
 
     # 4. Pass 1 KSampler (Node 7)
     if "7" in graph:
@@ -983,33 +1151,48 @@ async def execute_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE):
         graph["29"]["inputs"]["scheduler"] = pref.get("scheduler_pass2", pref["scheduler"])
         graph["29"]["inputs"]["denoise"] = pref["denoise_pass2"]
 
-    # 7. SeedVR2 Post / Color / Upscale
+    # 7. SeedVR2 Post / Color / Upscale (Node 52, 56, 58)
     if "52" in graph:
         graph["52"]["inputs"]["upscale_method"] = pref.get("seedvr2_upscale_method", "lanczos")
+    if "56" in graph:
+        graph["56"]["inputs"]["steps"] = pref.get("seedvr2_steps", 1)
+        graph["56"]["inputs"]["cfg"] = pref.get("seedvr2_cfg", 1.0)
+        graph["56"]["inputs"]["sampler_name"] = pref.get("seedvr2_sampler", "dpmpp_sde")
+        graph["56"]["inputs"]["scheduler"] = pref.get("seedvr2_scheduler", "beta")
     if "58" in graph:
         graph["58"]["inputs"]["color_correction_method"] = pref.get("seedvr2_color_correction", "lab")
 
-    # 8. Master Seed & File Prefixes
+    # 8. Tiled VAE Settings (Node 31, 54, 57)
+    tile_size = pref.get("vae_tile_size", 512)
+    tile_overlap = pref.get("vae_overlap", 64)
+    for vn in ["31", "54", "57"]:
+        if vn in graph:
+            graph[vn]["inputs"]["tile_size"] = tile_size
+            graph[vn]["inputs"]["overlap"] = tile_overlap
+
+    # 9. Master Seed & File Prefixes
+    fn_pfx = pref.get("filename_prefix", "zi")
     graph["68"]["inputs"]["seed"] = current_seed
     if "14" in graph:
-        graph["14"]["inputs"]["filename_prefix"] = f"zi-{current_seed}-1-base"
+        graph["14"]["inputs"]["filename_prefix"] = f"{fn_pfx}-{current_seed}-1-base"
     if "32" in graph:
-        graph["32"]["inputs"]["filename_prefix"] = f"zi-{current_seed}-2-hires"
+        graph["32"]["inputs"]["filename_prefix"] = f"{fn_pfx}-{current_seed}-2-hires"
     if "59" in graph:
-        graph["59"]["inputs"]["filename_prefix"] = f"zi-{current_seed}-3-4k"
+        graph["59"]["inputs"]["filename_prefix"] = f"{fn_pfx}-{current_seed}-3-4k"
 
-    # 9. LoRA (Node 67)
+    # 10. LoRA (Node 67)
     lora_strength = pref["lora_strength"]
     graph["67"]["inputs"]["lora_1"] = {
         "on": lora_strength > 0,
         "lora": "NIceAsians_Zimage.safetensors",
         "strength": lora_strength,
+        "strengthTwo": pref.get("lora_clip_strength", lora_strength),
     }
 
-    # 10. Remove UI-only comparison node for Telegram headless executions
+    # 11. Remove UI-only comparison node for Telegram headless executions
     graph.pop("38", None)
 
-    # 11. Adapt Pipeline Mode (Prune unneeded execution nodes)
+    # 12. Adapt Pipeline Mode (Prune unneeded execution nodes)
     pipeline_mode = pref["pipeline_mode"]
     target_save_node = "59"
 
@@ -1043,8 +1226,8 @@ async def execute_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"⏳ **Mengirim antrean ke ComfyUI...**\n"
         f"• Alur: **{mode_label}**\n"
         f"• Seed: `{current_seed}`\n"
-        f"• Ukuran: `{pref['dimensions']}`\n"
-        f"• LoRA: `{lora_strength}`",
+        f"• Ukuran: `{pref['dimensions']}` (Batch: `{pref.get('batch_size', 1)}`)\n"
+        f"• Shift: `{pref.get('auraflow_shift', 6.0)}` | LoRA: `{lora_strength}`",
         parse_mode=ParseMode.MARKDOWN,
     )
 
@@ -1107,7 +1290,7 @@ async def execute_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception as e:
             print(f"WS error: {e}")
 
-    # Fetch Execution History & Output Image
+    # Fetch Execution History & Output Images
     images = []
     async with aiohttp.ClientSession() as session:
         async with session.get(f"{server_url}/history/{prompt_id}") as resp:
@@ -1126,49 +1309,50 @@ async def execute_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await status_msg.edit_text("❌ Render selesai tetapi file gambar tidak ditemukan di output ComfyUI.")
         return
 
-    final_img_info = images[-1]
-    filename = final_img_info["filename"]
-    subfolder = final_img_info.get("subfolder", "")
-    local_output_path = Path("output") / subfolder / filename
-
-    real_w, real_h = 0, 0
-    file_size_mb = 0.0
-    if local_output_path.exists():
-        with Image.open(local_output_path) as im:
-            real_w, real_h = im.size
-        file_size_mb = local_output_path.stat().st_size / (1024 * 1024)
-
-    caption = (
-        f"✨ **Render Selesai!**\n"
-        f"• Alur: **{mode_label}**\n"
-        f"• Resolusi: **{real_w}x{real_h}** ({file_size_mb:.2f} MB)\n"
-        f"• Seed: `{current_seed}`\n"
-        f"• P1 Steps/CFG: `{pref['steps_pass1']}` / `{pref['cfg_pass1']}`\n"
-        f"• P2 Denoise/Upscale: `{pref['denoise_pass2']}` / `{pref.get('latent_scale_by', 6.0)}x`\n"
-        f"• LoRA: `{lora_strength}` | Model: `{pref['preset'].split()[0]}`\n"
-    )
-
     try:
         await status_msg.delete()
     except Exception:
         pass
 
-    try:
-        with open(local_output_path, "rb") as f:
-            await update.message.reply_photo(
-                photo=f,
-                caption=caption,
-                parse_mode=ParseMode.MARKDOWN,
-            )
-            f.seek(0)
-            await update.message.reply_document(
-                document=f,
-                filename=filename,
-                caption=f"📁 File Asli Tanpa Kompresi: `{filename}`",
-                parse_mode=ParseMode.MARKDOWN,
-            )
-    except Exception as e:
-        print(f"Delivery exception: {e}")
+    for img_idx, final_img_info in enumerate(images, 1):
+        filename = final_img_info["filename"]
+        subfolder = final_img_info.get("subfolder", "")
+        local_output_path = Path("output") / subfolder / filename
+
+        real_w, real_h = 0, 0
+        file_size_mb = 0.0
+        if local_output_path.exists():
+            with Image.open(local_output_path) as im:
+                real_w, real_h = im.size
+            file_size_mb = local_output_path.stat().st_size / (1024 * 1024)
+
+        batch_str = f" [Item {img_idx}/{len(images)}]" if len(images) > 1 else ""
+        caption = (
+            f"✨ **Render Selesai!**{batch_str}\n"
+            f"• Alur: **{mode_label}**\n"
+            f"• Resolusi: **{real_w}x{real_h}** ({file_size_mb:.2f} MB)\n"
+            f"• Seed: `{current_seed}` | Shift: `{pref.get('auraflow_shift', 6.0)}`\n"
+            f"• P1 Steps/CFG: `{pref['steps_pass1']}` / `{pref['cfg_pass1']}`\n"
+            f"• P2 Denoise/Upscale: `{pref['denoise_pass2']}` / `{pref.get('latent_scale_by', 6.0)}x`\n"
+            f"• LoRA: `{lora_strength}` | Tile: `{tile_size}px`\n"
+        )
+
+        try:
+            with open(local_output_path, "rb") as f:
+                await update.message.reply_photo(
+                    photo=f,
+                    caption=caption,
+                    parse_mode=ParseMode.MARKDOWN,
+                )
+                f.seek(0)
+                await update.message.reply_document(
+                    document=f,
+                    filename=filename,
+                    caption=f"📁 File Asli: `{filename}`",
+                    parse_mode=ParseMode.MARKDOWN,
+                )
+        except Exception as e:
+            print(f"Delivery exception: {e}")
 
 
 async def global_error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
