@@ -32,16 +32,6 @@
       "title": "VAELoader (Flux AE)"
     }
   },
-  "6": {
-    "inputs": {
-      "dimensions": "864x1152 ( 3:4 )",
-      "batch_size": 1
-    },
-    "class_type": "ZImageResolutionPreset",
-    "_meta": {
-      "title": "Resolution Preset (Aspect Ratio)"
-    }
-  },
   "7": {
     "inputs": {
       "seed": [
@@ -66,7 +56,7 @@
         0
       ],
       "latent_image": [
-        "6",
+        "69",
         0
       ]
     },
@@ -164,27 +154,13 @@
         0
       ],
       "latent_image": [
-        "35",
+        "70",
         0
       ]
     },
     "class_type": "KSampler",
     "_meta": {
       "title": "KSampler (Pass 2 Hi-Res 1.5x)"
-    }
-  },
-  "30": {
-    "inputs": {
-      "upscale_method": "lanczos",
-      "scale_by": 1.5,
-      "image": [
-        "9",
-        0
-      ]
-    },
-    "class_type": "ImageScaleBy",
-    "_meta": {
-      "title": "Image Upscale 1.5x (Lanczos)"
     }
   },
   "31": {
@@ -448,20 +424,29 @@
       351971767740904
     ]
   },
-  "35": {
+  "69": {
     "inputs": {
-      "pixels": [
-        "30",
-        0
-      ],
-      "vae": [
-        "5",
+      "width": 224,
+      "height": 288,
+      "batch_size": 1
+    },
+    "class_type": "EmptySD3LatentImage",
+    "_meta": {
+      "title": "Empty SD3 Latent Image (Base 224x288)"
+    }
+  },
+  "70": {
+    "inputs": {
+      "upscale_method": "bislerp",
+      "scale_by": 6.0,
+      "samples": [
+        "7",
         0
       ]
     },
-    "class_type": "VAEEncode",
+    "class_type": "LatentUpscaleBy",
     "_meta": {
-      "title": "VAE Encode (Pass 2)"
+      "title": "Latent Upscale 6x (Bislerp)"
     }
   }
 }

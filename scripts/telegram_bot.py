@@ -97,6 +97,10 @@ def load_default_preferences() -> dict:
 
             if "6" in graph:
                 defaults["dimensions"] = graph["6"].get("inputs", {}).get("dimensions", defaults["dimensions"])
+            elif "69" in graph:
+                w = graph["69"].get("inputs", {}).get("width", 224)
+                h = graph["69"].get("inputs", {}).get("height", 288)
+                defaults["dimensions"] = f"{w}x{h} ( 3:4 )"
 
             if "67" in graph:
                 lora_cfg = graph["67"].get("inputs", {}).get("lora_1", {})
@@ -536,8 +540,17 @@ async def prompt_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # 1. Positive Prompt (Node 3)
     graph["3"]["inputs"]["text"] = prompt_text
 
-    # 2. Resolution Preset (Node 6)
-    graph["6"]["inputs"]["dimensions"] = pref["dimensions"]
+    # 2. Resolution Preset (Node 6 or 69)
+    if "6" in graph:
+        graph["6"]["inputs"]["dimensions"] = pref["dimensions"]
+    elif "69" in graph:
+        res_str = pref["dimensions"].split()[0]
+        try:
+            w, h = map(int, res_str.split("x"))
+            graph["69"]["inputs"]["width"] = w
+            graph["69"]["inputs"]["height"] = h
+        except Exception:
+            pass
 
     # 3. Model & Samplers
     is_turbo = "Turbo" in pref["preset"]
@@ -580,14 +593,14 @@ async def prompt_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if pipeline_mode == "direct":
         # Disconnect Pass 2, route Pass 1 directly into SeedVR2
-        for nid in ["29", "30", "31", "32", "35"]:
+        for nid in ["29", "70", "31", "32"]:
             graph.pop(nid, None)
         graph["52"]["inputs"]["image"] = ["9", 0]
         graph["52"]["inputs"]["scale_by"] = 3.0
         target_save_node = "59"
     elif pipeline_mode == "draft":
         # Disconnect Pass 2 and SeedVR2 by removing their outputs
-        for nid in ["29", "30", "31", "32", "35", "50", "51", "52", "53", "54", "55", "56", "57", "58", "59"]:
+        for nid in ["29", "70", "31", "32", "50", "51", "52", "53", "54", "55", "56", "57", "58", "59"]:
             graph.pop(nid, None)
         target_save_node = "14"  # Save 1: Base
     elif pipeline_mode == "hires":
