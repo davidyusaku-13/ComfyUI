@@ -615,7 +615,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # 5. Pass 2 Menus
     elif data == "menu_p2":
-        await query.edit_message_reply_markup(reply_markup=build_pass2_keyboard(user.id))
+        await query.edit_message_reply_markup(reply_markup=build_p2_keyboard(user.id))
         return
 
     elif data == "menu_p2_steps":
@@ -624,7 +624,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data.startswith("set_p2_steps:"):
         pref["p2_steps"] = int(data.split("set_p2_steps:")[1])
-        await query.edit_message_reply_markup(reply_markup=build_pass2_keyboard(user.id))
+        await query.edit_message_reply_markup(reply_markup=build_p2_keyboard(user.id))
         return
 
     elif data == "menu_p2_cfg":
@@ -633,7 +633,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data.startswith("set_p2_cfg:"):
         pref["p2_cfg"] = float(data.split("set_p2_cfg:")[1])
-        await query.edit_message_reply_markup(reply_markup=build_pass2_keyboard(user.id))
+        await query.edit_message_reply_markup(reply_markup=build_p2_keyboard(user.id))
         return
 
     elif data == "menu_p2_denoise":
@@ -642,7 +642,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data.startswith("set_p2_denoise:"):
         pref["p2_denoise"] = float(data.split("set_p2_denoise:")[1])
-        await query.edit_message_reply_markup(reply_markup=build_pass2_keyboard(user.id))
+        await query.edit_message_reply_markup(reply_markup=build_p2_keyboard(user.id))
         return
 
     elif data == "menu_p2_sam":
