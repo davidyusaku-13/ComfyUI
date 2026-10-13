@@ -777,7 +777,7 @@ async def execute_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"⏳ **Mengirim antrean ke ComfyUI...**\n"
         f"• Seed: `{current_seed}`\n"
         f"• Shift: `{pref['auraflow_shift']}` | LoRA: `{pref['lora_strength']}`\n"
-        f"• P1 Steps/CFG: `{pref['p1_steps']}` / `{pref['p1_cfg']}` ({pref['p1_sampler']})\n"
+        f"• P1 Steps/CFG: `{pref['p1_steps']}` / `{pref['p1_cfg']}` (`{pref['p1_sampler']}`)\n"
         f"• P2 Steps/CFG/Denoise: `{pref['p2_steps']}` / `{pref['p2_cfg']}` / `{pref['p2_denoise']}`",
         parse_mode=ParseMode.MARKDOWN,
     )
@@ -881,7 +881,7 @@ async def execute_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"• Resolusi: **{real_w}x{real_h}** ({file_size_mb:.2f} MB)\n"
         f"• Seed: `{current_seed}` | Shift: `{pref['auraflow_shift']}`\n"
         f"• LoRA: `{pref['lora_strength']}`\n"
-        f"• P1 Steps/CFG: `{pref['p1_steps']}` / `{pref['p1_cfg']}` ({pref['p1_sampler']})\n"
+        f"• P1 Steps/CFG: `{pref['p1_steps']}` / `{pref['p1_cfg']}` (`{pref['p1_sampler']}`)\n"
         f"• P2 Steps/CFG/Denoise: `{pref['p2_steps']}` / `{pref['p2_cfg']}` / `{pref['p2_denoise']}`\n"
     )
 
