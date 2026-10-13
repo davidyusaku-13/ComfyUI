@@ -14,8 +14,8 @@
     "inputs": {
       "text": "Photorealistic full-body portrait of a beautiful slim Japanese woman with proportional big natural boobs and sexy body, fully naked, sitting on her legs on a bed inside a bedroom, one hand holding an iPhone 11 doing mirror selfie, the other hand is holding her boobs, no makeup, neutral color palette, softly lit with natural light, shallow depth of field, 50mm lens, high detail, editorial fashion photography, ultra realistic, magazine style",
       "clip": [
-        "67",
-        1
+        "2",
+        0
       ]
     },
     "class_type": "CLIPTextEncode",
@@ -121,7 +121,7 @@
       "shift": 3.0,
       "sampling": "flow",
       "model": [
-        "67",
+        "13",
         0
       ]
     },
@@ -385,31 +385,6 @@
     "class_type": "SaveImage",
     "_meta": {
       "title": "Save 3: SeedVR2 (4K Ultra HD)"
-    }
-  },
-  "67": {
-    "inputs": {
-      "PowerLoraLoaderHeaderWidget": {
-        "type": "PowerLoraLoaderHeaderWidget"
-      },
-      "lora_1": {
-        "on": true,
-        "lora": "NIceAsians_Zimage.safetensors",
-        "strength": 0.2
-      },
-      "\u2795 Add Lora": "",
-      "model": [
-        "13",
-        0
-      ],
-      "clip": [
-        "2",
-        0
-      ]
-    },
-    "class_type": "Power Lora Loader (rgthree)",
-    "_meta": {
-      "title": "Power Lora Loader (rgthree)"
     }
   },
   "68": {

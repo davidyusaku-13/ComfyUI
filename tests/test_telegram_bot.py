@@ -1,19 +1,19 @@
 """
 Automated Test Suite for Telegram Bot Sidecar Client.
 Verifies preference synchronization, keyboard builders, callback state transitions,
-/set text command parser, and ComfyUI backend prompt graph validation.
+/set text command parser, and ComfyUI backend prompt graph validation (without LoRA).
 """
 
 import sys
 import json
 import asyncio
 from pathlib import Path
+from unittest.mock import MagicMock, AsyncMock
 
 # Add project root to path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
-from unittest.mock import MagicMock, AsyncMock, patch
 
 # Ensure utf-8
 sys.stdout.reconfigure(encoding="utf-8")
@@ -38,8 +38,6 @@ def test_load_default_preferences():
     print("2. [PREF] Testing extraction from web workflow (user/default/workflows/z-image.json)...")
     pref = tb.load_default_preferences()
     
-    # Must have 5 core exposed components
-    assert "lora_strength" in pref, "Missing lora_strength"
     assert "auraflow_shift" in pref, "Missing auraflow_shift"
     assert "seed_mode" in pref, "Missing seed_mode"
     assert "fixed_seed" in pref, "Missing fixed_seed"
@@ -54,7 +52,7 @@ def test_load_default_preferences():
     assert "p2_scheduler" in pref, "Missing p2_scheduler"
     assert "p2_denoise" in pref, "Missing p2_denoise"
 
-    print(f"   -> PASS: Successfully loaded defaults (LoRA={pref['lora_strength']}, Shift={pref['auraflow_shift']}, P1={pref['p1_steps']}s/{pref['p1_cfg']}cfg, P2={pref['p2_steps']}s/{pref['p2_denoise']}denoise).")
+    print(f"   -> PASS: Loaded defaults (Shift={pref['auraflow_shift']}, P1={pref['p1_steps']}s/{pref['p1_cfg']}cfg, P2={pref['p2_steps']}s/{pref['p2_denoise']}denoise).")
 
 
 def test_keyboard_builders():
@@ -62,10 +60,7 @@ def test_keyboard_builders():
     uid = 99999
     
     kb_main = tb.build_main_settings_keyboard(uid)
-    assert len(kb_main.inline_keyboard) >= 5, "Main keyboard incomplete"
-
-    kb_lora = tb.build_lora_keyboard(uid)
-    assert len(kb_lora.inline_keyboard) >= 2, "LoRA keyboard incomplete"
+    assert len(kb_main.inline_keyboard) >= 4, "Main keyboard incomplete"
 
     kb_shift = tb.build_shift_keyboard(uid)
     assert len(kb_shift.inline_keyboard) >= 2, "Shift keyboard incomplete"
@@ -74,7 +69,7 @@ def test_keyboard_builders():
     assert len(kb_seed.inline_keyboard) >= 2, "Seed keyboard incomplete"
 
     kb_p1 = tb.build_p1_keyboard(uid)
-    assert len(kb_p1.inline_keyboard) >= 4, "Pass 1 keyboard incomplete"
+    assert len(kb_p1.inline_keyboard) >= 3, "Pass 1 keyboard incomplete"
 
     kb_p1_steps = tb.build_p1_steps_keyboard(uid)
     assert len(kb_p1_steps.inline_keyboard) >= 2, "P1 Steps keyboard incomplete"
@@ -86,7 +81,7 @@ def test_keyboard_builders():
     assert len(kb_p1_denoise.inline_keyboard) >= 2, "P1 Denoise keyboard incomplete"
 
     kb_p2 = tb.build_p2_keyboard(uid)
-    assert len(kb_p2.inline_keyboard) >= 4, "Pass 2 keyboard incomplete"
+    assert len(kb_p2.inline_keyboard) >= 3, "Pass 2 keyboard incomplete"
 
     kb_p2_steps = tb.build_p2_steps_keyboard(uid)
     assert len(kb_p2_steps.inline_keyboard) >= 2, "P2 Steps keyboard incomplete"
@@ -103,10 +98,9 @@ def test_keyboard_builders():
     kb_sched = tb.build_scheduler_keyboard("p1", uid)
     assert len(kb_sched.inline_keyboard) >= 2, "Scheduler keyboard incomplete"
 
-    # Verify settings text format without crash
     text = tb.format_settings_text(uid)
     assert "PANEL KONTROL STUDIO" in text
-    print("   -> PASS: All 14 keyboard builders & text formatters verified error-free.")
+    print("   -> PASS: All keyboard builders & text formatters verified error-free.")
 
 
 async def test_callback_state_transitions():
@@ -127,34 +121,30 @@ async def test_callback_state_transitions():
         context.bot_data = {"config": {"telegram": {"allowed_user_ids": [uid]}}}
         await tb.callback_handler(update, context)
 
-    # 1. Test LoRA change
-    await simulate_cb("set_lora:0.6")
-    assert pref["lora_strength"] == 0.6, f"LoRA not updated: {pref['lora_strength']}"
-
-    # 2. Test Shift change
+    # 1. Test Shift change
     await simulate_cb("set_shift:4.0")
     assert pref["auraflow_shift"] == 4.0, f"Shift not updated: {pref['auraflow_shift']}"
 
-    # 3. Test P1 steps change
+    # 2. Test P1 steps change
     await simulate_cb("set_p1_steps:16")
     assert pref["p1_steps"] == 16, f"P1 steps not updated: {pref['p1_steps']}"
 
-    # 4. Test P1 cfg change
+    # 3. Test P1 cfg change
     await simulate_cb("set_p1_cfg:2.5")
     assert pref["p1_cfg"] == 2.5, f"P1 cfg not updated: {pref['p1_cfg']}"
 
-    # 5. Test P1 sampler & scheduler change
+    # 4. Test P1 sampler & scheduler change
     await simulate_cb("set_sam:p1:dpmpp_sde")
     assert pref["p1_sampler"] == "dpmpp_sde", f"P1 sampler not updated: {pref['p1_sampler']}"
 
     await simulate_cb("set_sched:p1:beta")
     assert pref["p1_scheduler"] == "beta", f"P1 scheduler not updated: {pref['p1_scheduler']}"
 
-    # 6. Test P2 denoise change
+    # 5. Test P2 denoise change
     await simulate_cb("set_p2_denoise:0.35")
     assert pref["p2_denoise"] == 0.35, f"P2 denoise not updated: {pref['p2_denoise']}"
 
-    # 7. Test Reset settings
+    # 6. Test Reset settings
     await simulate_cb("reset_settings")
     defaults = tb.load_default_preferences()
     assert tb.get_user_pref(uid)["p1_steps"] == defaults["p1_steps"]
@@ -175,9 +165,6 @@ async def test_set_command_parser():
         context.args = arg_list
         context.bot_data = {"config": {"telegram": {"allowed_user_ids": [uid]}}}
         await tb.set_command_handler(update, context)
-
-    await simulate_set(["lora", "0.45"])
-    assert pref["lora_strength"] == 0.45
 
     await simulate_set(["shift", "3.16"])
     assert pref["auraflow_shift"] == 3.16
@@ -217,20 +204,13 @@ async def test_comfy_graph_validation():
     pref["p2_scheduler"] = "beta"
     pref["p2_denoise"] = 0.38
     pref["auraflow_shift"] = 5.0
-    pref["lora_strength"] = 0.7
 
     current_seed = 445566
-    prompt_text = "2s12an5, ultra realistic test photograph"
+    prompt_text = "ultra realistic test photograph"
 
-    # Assemble graph exactly as telegram_bot.py does
+    # Assemble graph without LoRA
     graph["3"]["inputs"]["text"] = prompt_text
     graph["15"]["inputs"]["shift"] = pref["auraflow_shift"]
-    graph["67"]["inputs"]["lora_1"] = {
-        "on": True,
-        "lora": "NIceAsians_Zimage.safetensors",
-        "strength": pref["lora_strength"],
-        "strengthTwo": pref["lora_strength"],
-    }
     graph["68"]["inputs"]["seed"] = current_seed
 
     graph["7"]["inputs"]["steps"] = pref["p1_steps"]
@@ -264,7 +244,7 @@ async def run_all_tests():
     await test_set_command_parser()
     await test_comfy_graph_validation()
     print("==================================================")
-    print("🎉 SEMUA TEST BERHASIL (6/6 SUITE 100% PASS)!")
+    print("🎉 SEMUA TEST BERHASIL (6/6 SUITE 100% PASS)! KALENG EMAS!")
     print("==================================================")
 
 

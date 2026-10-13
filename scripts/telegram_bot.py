@@ -1,11 +1,10 @@
 """
 Telegram Bot Sidecar Client for ComfyUI.
-Rebuilt from scratch with clean, dedicated exposure of:
-1. LoRA Strength (Node 67)
-2. Shift AuraFlow (Node 15)
-3. Master Seed (Node 68)
-4. KSampler Pass 1 All Inputs (Node 7: steps, cfg, sampler, scheduler, denoise)
-5. KSampler Pass 2 All Inputs (Node 29: steps, cfg, sampler, scheduler, denoise)
+Clean, dedicated exposure of core studio parameters (without LoRA):
+1. Shift AuraFlow (Node 15)
+2. Master Seed (Node 68)
+3. KSampler Pass 1 All Inputs (Node 7: steps, cfg, sampler, scheduler, denoise)
+4. KSampler Pass 2 All Inputs (Node 29: steps, cfg, sampler, scheduler, denoise)
 """
 
 import sys
@@ -77,20 +76,18 @@ def is_authorized(user_id: int, allowed_ids: list[int]) -> bool:
 def load_default_preferences() -> dict:
     """Reads default values directly from the web workflow JSON file."""
     defaults = {
-        # 1. LoRA Strength
-        "lora_strength": 0.25,
-        # 2. Shift AuraFlow
+        # 1. Shift AuraFlow
         "auraflow_shift": 6.0,
-        # 3. Master Seed
+        # 2. Master Seed
         "seed_mode": "random",
         "fixed_seed": 351971767740904,
-        # 4. KSampler Pass 1 All Inputs
+        # 3. KSampler Pass 1 All Inputs
         "p1_steps": 9,
         "p1_cfg": 4.0,
         "p1_sampler": "euler_ancestral",
         "p1_scheduler": "ddim_uniform",
         "p1_denoise": 1.0,
-        # 5. KSampler Pass 2 All Inputs
+        # 4. KSampler Pass 2 All Inputs
         "p2_steps": 9,
         "p2_cfg": 1.0,
         "p2_sampler": "dpmpp_sde",
@@ -104,21 +101,13 @@ def load_default_preferences() -> dict:
                 wf = json.load(f)
             nodes = {n["id"]: n for n in wf.get("nodes", [])}
 
-            # 1. LoRA Strength (Node 67)
-            if 67 in nodes:
-                wv = nodes[67].get("widgets_values") or []
-                for item in wv:
-                    if isinstance(item, dict) and "strength" in item:
-                        defaults["lora_strength"] = float(item["strength"])
-                        break
-
-            # 2. Shift AuraFlow (Node 15)
+            # 1. Shift AuraFlow (Node 15)
             if 15 in nodes:
                 wv = nodes[15].get("widgets_values") or []
                 if wv:
                     defaults["auraflow_shift"] = float(wv[0])
 
-            # 3. Master Seed (Node 68)
+            # 2. Master Seed (Node 68)
             if 68 in nodes:
                 wv = nodes[68].get("widgets_values") or []
                 if wv:
@@ -128,7 +117,7 @@ def load_default_preferences() -> dict:
                     else:
                         defaults["seed_mode"] = "fixed"
 
-            # 4. KSampler Pass 1 (Node 7)
+            # 3. KSampler Pass 1 (Node 7)
             if 7 in nodes:
                 wv = nodes[7].get("widgets_values") or []
                 if len(wv) >= 7:
@@ -138,7 +127,7 @@ def load_default_preferences() -> dict:
                     defaults["p1_scheduler"] = str(wv[5])
                     defaults["p1_denoise"] = float(wv[6])
 
-            # 5. KSampler Pass 2 (Node 29)
+            # 4. KSampler Pass 2 (Node 29)
             if 29 in nodes:
                 wv = nodes[29].get("widgets_values") or []
                 if len(wv) >= 7:
@@ -182,10 +171,7 @@ def build_main_settings_keyboard(user_id: int) -> InlineKeyboardMarkup:
 
     buttons = [
         [
-            InlineKeyboardButton(f"🌸 LoRA Strength: {pref['lora_strength']}", callback_data="menu_lora"),
-            InlineKeyboardButton(f"🌊 Shift: {pref['auraflow_shift']}", callback_data="menu_shift"),
-        ],
-        [
+            InlineKeyboardButton(f"🌊 Shift AuraFlow: {pref['auraflow_shift']}", callback_data="menu_shift"),
             InlineKeyboardButton(f"🎲 Seed: {seed_label}", callback_data="menu_seed"),
         ],
         [
@@ -202,17 +188,7 @@ def build_main_settings_keyboard(user_id: int) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(buttons)
 
 
-# --- 1. LoRA Keyboard ---
-def build_lora_keyboard(user_id: int) -> InlineKeyboardMarkup:
-    pref = get_user_pref(user_id)
-    cur = pref["lora_strength"]
-    strengths = [0.0, 0.2, 0.25, 0.4, 0.6, 0.8, 1.0, 1.2]
-    r1 = [InlineKeyboardButton(f"{'✅ ' if s == cur else ''}{s}", callback_data=f"set_lora:{s}") for s in strengths[:4]]
-    r2 = [InlineKeyboardButton(f"{'✅ ' if s == cur else ''}{s}", callback_data=f"set_lora:{s}") for s in strengths[4:]]
-    return InlineKeyboardMarkup([r1, r2, [InlineKeyboardButton("🔙 Kembali ke Menu Utama", callback_data="menu_main")]])
-
-
-# --- 2. Shift AuraFlow Keyboard ---
+# --- 1. Shift AuraFlow Keyboard ---
 def build_shift_keyboard(user_id: int) -> InlineKeyboardMarkup:
     pref = get_user_pref(user_id)
     cur = pref["auraflow_shift"]
@@ -222,7 +198,7 @@ def build_shift_keyboard(user_id: int) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([r1, r2, [InlineKeyboardButton("🔙 Kembali ke Menu Utama", callback_data="menu_main")]])
 
 
-# --- 3. Seed Keyboard ---
+# --- 2. Seed Keyboard ---
 def build_seed_keyboard(user_id: int) -> InlineKeyboardMarkup:
     pref = get_user_pref(user_id)
     mode = pref["seed_mode"]
@@ -237,7 +213,7 @@ def build_seed_keyboard(user_id: int) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(buttons)
 
 
-# --- 4. KSampler Pass 1 Menu & Sub-menus ---
+# --- 3. KSampler Pass 1 Menu & Sub-menus ---
 def build_p1_keyboard(user_id: int) -> InlineKeyboardMarkup:
     pref = get_user_pref(user_id)
     buttons = [
@@ -283,7 +259,7 @@ def build_p1_denoise_keyboard(user_id: int) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([row, [InlineKeyboardButton("🔙 Kembali ke Pass 1", callback_data="menu_p1")]])
 
 
-# --- 5. KSampler Pass 2 Menu & Sub-menus ---
+# --- 4. KSampler Pass 2 Menu & Sub-menus ---
 def build_p2_keyboard(user_id: int) -> InlineKeyboardMarkup:
     pref = get_user_pref(user_id)
     buttons = [
@@ -372,7 +348,6 @@ def format_settings_text(user_id: int) -> str:
 
     return (
         "⚙️ **PANEL KONTROL STUDIO Z-IMAGE**\n\n"
-        f"• **LoRA Strength:** `{pref['lora_strength']}`\n"
         f"• **AuraFlow Shift:** `{pref['auraflow_shift']}`\n"
         f"• **Master Seed:** `{seed_text}`\n\n"
         f"🎛️ **KSampler Pass 1 (Node 7):**\n"
@@ -383,7 +358,7 @@ def format_settings_text(user_id: int) -> str:
         f"  • Steps: `{pref['p2_steps']}` | CFG: `{pref['p2_cfg']}` | Denoise: `{pref['p2_denoise']}`\n"
         f"  • Sampler: `{pref['p2_sampler']}`\n"
         f"  • Scheduler: `{pref['p2_scheduler']}`\n\n"
-        "💡 *Tips: Anda juga bisa mengetik perintah `/set <param> <nilai>` kapan saja.*"
+        "💡 *Tips: Anda bisa mengetik perintah `/set <param> <nilai>` kapan saja.*"
     )
 
 
@@ -407,10 +382,10 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"Halo **{user.first_name}**! 🎨\n\n"
         f"🖥️ **Status ComfyUI:** {status_str}\n\n"
         "💡 **Cara Pakai:**\n"
-        "• Ketik /settings untuk membuka panel kontrol studio (LoRA, Shift, Seed, KSampler P1 & P2).\n"
-        "• Ketik /set `<parameter>` `<nilai>` untuk mengubah angka bebas (contoh: `/set denoise 0.40`).\n"
+        "• Ketik /settings untuk membuka panel kontrol studio (Shift, Seed, KSampler P1 & P2).\n"
+        "• Ketik /set `<parameter>` `<nilai>` untuk mengubah nilai bebas (contoh: `/set denoise 0.40`).\n"
         "• Ketik /seed untuk melihat atau mengunci seed aktif.\n"
-        "• Kirim prompt apa saja langsung ke chat ini untuk generate!\n"
+        "• Kirim prompt teks apa saja langsung ke chat ini untuk generate!\n"
     )
     await update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
 
@@ -438,7 +413,6 @@ async def set_command_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
     if len(args) < 2:
         help_msg = (
             "🛠️ **Daftar Perintah /set:**\n\n"
-            "• `/set lora <float>` (misal `/set lora 0.3`)\n"
             "• `/set shift <float>` (misal `/set shift 6.0` atau `3.16`)\n"
             "• `/set seed <int>` (misal `/set seed 123456789`)\n\n"
             "• `/set p1steps <int>` (Pass 1 steps)\n"
@@ -456,10 +430,7 @@ async def set_command_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
     pref = get_user_pref(user.id)
 
     try:
-        if key in ["lora", "lora_strength"]:
-            pref["lora_strength"] = float(val)
-            await update.message.reply_text(f"✅ LoRA Strength diubah menjadi `{pref['lora_strength']}`", parse_mode=ParseMode.MARKDOWN)
-        elif key in ["shift", "auraflow_shift"]:
+        if key in ["shift", "auraflow_shift"]:
             pref["auraflow_shift"] = float(val)
             await update.message.reply_text(f"✅ AuraFlow Shift diubah menjadi `{pref['auraflow_shift']}`", parse_mode=ParseMode.MARKDOWN)
         elif key in ["seed"]:
@@ -544,15 +515,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data == "reset_settings":
         user_sessions[user.id] = load_default_preferences()
 
-    # 1. LoRA
-    elif data == "menu_lora":
-        await query.edit_message_reply_markup(reply_markup=build_lora_keyboard(user.id))
-        return
-
-    elif data.startswith("set_lora:"):
-        pref["lora_strength"] = float(data.split("set_lora:")[1])
-
-    # 2. Shift
+    # 1. Shift
     elif data == "menu_shift":
         await query.edit_message_reply_markup(reply_markup=build_shift_keyboard(user.id))
         return
@@ -560,7 +523,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data.startswith("set_shift:"):
         pref["auraflow_shift"] = float(data.split("set_shift:")[1])
 
-    # 3. Seed
+    # 2. Seed
     elif data == "menu_seed":
         await query.edit_message_reply_markup(reply_markup=build_seed_keyboard(user.id))
         return
@@ -574,7 +537,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_reply_markup(reply_markup=build_seed_keyboard(user.id))
         return
 
-    # 4. Pass 1 Menus
+    # 3. Pass 1 Menus
     elif data == "menu_p1":
         await query.edit_message_reply_markup(reply_markup=build_p1_keyboard(user.id))
         return
@@ -614,7 +577,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_reply_markup(reply_markup=build_scheduler_keyboard("p1", user.id))
         return
 
-    # 5. Pass 2 Menus
+    # 4. Pass 2 Menus
     elif data == "menu_p2":
         await query.edit_message_reply_markup(reply_markup=build_p2_keyboard(user.id))
         return
@@ -711,11 +674,8 @@ async def execute_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⚠️ ComfyUI backend sedang offline.\nSilakan jalankan `uv run main.py --cuda-device 0` di PC Anda.")
         return
 
-    raw_text = update.message.text.strip()
+    prompt_text = update.message.text.strip()
     pref = get_user_pref(user.id)
-
-    # Automatic trigger word prefix
-    prompt_text = raw_text if raw_text.startswith("2s12an5") else f"2s12an5, {raw_text}"
 
     current_seed = (
         random.randint(1, 2**48 - 1)
@@ -734,20 +694,10 @@ async def execute_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if "15" in graph:
         graph["15"]["inputs"]["shift"] = pref["auraflow_shift"]
 
-    # --- 3. LoRA Strength (Node 67) ---
-    if "67" in graph:
-        lora_val = pref["lora_strength"]
-        graph["67"]["inputs"]["lora_1"] = {
-            "on": lora_val > 0,
-            "lora": "NIceAsians_Zimage.safetensors",
-            "strength": lora_val,
-            "strengthTwo": lora_val,
-        }
-
-    # --- 4. Master Seed (Node 68) ---
+    # --- 3. Master Seed (Node 68) ---
     graph["68"]["inputs"]["seed"] = current_seed
 
-    # --- 5. KSampler Pass 1 All Inputs (Node 7) ---
+    # --- 4. KSampler Pass 1 All Inputs (Node 7) ---
     if "7" in graph:
         graph["7"]["inputs"]["steps"] = pref["p1_steps"]
         graph["7"]["inputs"]["cfg"] = pref["p1_cfg"]
@@ -755,7 +705,7 @@ async def execute_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE):
         graph["7"]["inputs"]["scheduler"] = pref["p1_scheduler"]
         graph["7"]["inputs"]["denoise"] = pref["p1_denoise"]
 
-    # --- 6. KSampler Pass 2 All Inputs (Node 29) ---
+    # --- 5. KSampler Pass 2 All Inputs (Node 29) ---
     if "29" in graph:
         graph["29"]["inputs"]["steps"] = pref["p2_steps"]
         graph["29"]["inputs"]["cfg"] = pref["p2_cfg"]
@@ -776,7 +726,7 @@ async def execute_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     status_msg = await update.message.reply_text(
         f"⏳ **Mengirim antrean ke ComfyUI...**\n"
-        f"• Seed: `{current_seed}` | Shift: `{pref['auraflow_shift']}` | LoRA: `{pref['lora_strength']}`\n"
+        f"• Seed: `{current_seed}` | Shift: `{pref['auraflow_shift']}`\n"
         f"• KSampler P1: `{pref['p1_steps']}` steps | `{pref['p1_cfg']}` cfg | `{pref['p1_denoise']}` denoise | `{pref['p1_sampler']}` | `{pref['p1_scheduler']}`\n"
         f"• KSampler P2: `{pref['p2_steps']}` steps | `{pref['p2_cfg']}` cfg | `{pref['p2_denoise']}` denoise | `{pref['p2_sampler']}` | `{pref['p2_scheduler']}`",
         parse_mode=ParseMode.MARKDOWN,
@@ -795,7 +745,6 @@ async def execute_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "13": "Memuat Model Z-Image",
         "2":  "Memuat Text Encoder CLIP",
         "5":  "Memuat VAE",
-        "67": "Menerapkan LoRA",
         "69": "Membuat Base Latent Canvas",
         "3":  "Encoding Teks Prompt",
         "15": "AuraFlow Timestep Shift",
@@ -924,7 +873,7 @@ async def execute_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE):
     caption = (
         f"✨ **Render Selesai!**\n"
         f"• Resolusi: **{real_w}x{real_h}** ({file_size_mb:.2f} MB)\n"
-        f"• Seed: `{current_seed}` | Shift: `{pref['auraflow_shift']}` | LoRA: `{pref['lora_strength']}`\n"
+        f"• Seed: `{current_seed}` | Shift: `{pref['auraflow_shift']}`\n"
         f"• KSampler P1: `{pref['p1_steps']}` steps | `{pref['p1_cfg']}` cfg | `{pref['p1_denoise']}` denoise | `{pref['p1_sampler']}` | `{pref['p1_scheduler']}`\n"
         f"• KSampler P2: `{pref['p2_steps']}` steps | `{pref['p2_cfg']}` cfg | `{pref['p2_denoise']}` denoise | `{pref['p2_sampler']}` | `{pref['p2_scheduler']}`\n"
     )
@@ -951,14 +900,12 @@ async def execute_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     write_timeout=300,
                 )
             except TimedOut:
-                # Server-side ghost upload completes successfully on Telegram servers
                 print("Raw document streaming delivered with background server ack.")
     except Exception as e:
         print(f"Delivery exception: {e}")
 
 
 async def global_error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
-    from telegram.error import BadRequest, TimedOut
     if isinstance(context.error, BadRequest) and "Message is not modified" in str(context.error):
         return
     if isinstance(context.error, TimedOut):
@@ -991,9 +938,9 @@ def main():
     app.add_error_handler(global_error_handler)
 
     print("==================================================")
-    print("🤖 Telegram Bot Studio Client (Refactored Clean)")
+    print("🤖 Telegram Bot Studio Client (Clean Rebuild)")
     print(f"   Server Target : {config['comfyui']['server_url']}")
-    print("   Exposed Scope : LoRA, Shift, Seed, KSampler P1 & P2 All Inputs")
+    print("   Exposed Scope : Shift, Seed, KSampler P1 & P2 All Inputs")
     print("==================================================")
 
     app.run_polling()
