@@ -37,7 +37,6 @@ def test_authorization():
 def test_load_default_preferences():
     print("2. [PREF] Testing extraction from web workflow (user/default/workflows/z-image.json)...")
     pref = tb.load_default_preferences()
-    
     assert "auraflow_shift" in pref, "Missing auraflow_shift"
     assert "seed_mode" in pref, "Missing seed_mode"
     assert "fixed_seed" in pref, "Missing fixed_seed"
@@ -58,7 +57,6 @@ def test_load_default_preferences():
 def test_keyboard_builders():
     print("3. [UI] Testing all inline keyboard builders and rendering...")
     uid = 99999
-    
     kb_main = tb.build_main_settings_keyboard(uid)
     assert len(kb_main.inline_keyboard) >= 4, "Main keyboard incomplete"
 
@@ -185,7 +183,7 @@ async def test_set_command_parser():
 async def test_comfy_graph_validation():
     print("6. [GRAPH & COMFY ENGINE] Validating generated prompt payload against ComfyUI core...")
     loop = asyncio.get_running_loop()
-    s = server.PromptServer(loop, MagicMock())
+    server.PromptServer(loop, MagicMock())
     await nodes.init_extra_nodes()
 
     with open(tb.TEMPLATE_PATH, "r", encoding="utf-8") as f:
