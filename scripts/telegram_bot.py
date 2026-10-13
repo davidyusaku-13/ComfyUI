@@ -789,6 +789,34 @@ async def execute_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE):
     prompt_id = None
     last_ui_update = 0.0
     last_text = ""
+    current_stage_name = "Inisialisasi Antrean"
+
+    node_stage_names = {
+        "13": "Memuat Model Z-Image",
+        "2":  "Memuat Text Encoder CLIP",
+        "5":  "Memuat VAE",
+        "67": "Menerapkan LoRA",
+        "69": "Membuat Base Latent Canvas",
+        "3":  "Encoding Teks Prompt",
+        "15": "AuraFlow Timestep Shift",
+        "7":  "🎛️ KSampler Pass 1 (Base)",
+        "9":  "🖼️ VAE Decode Pass 1",
+        "14": "💾 Menyimpan Preview Pass 1",
+        "70": "📐 Latent Upscale 6x (Bislerp)",
+        "29": "🔬 KSampler Pass 2 (Hi-Res)",
+        "31": "🖼️ VAE Decode Tiled Pass 2",
+        "32": "💾 Menyimpan Hasil Pass 2",
+        "50": "🧬 Memuat Model SeedVR2",
+        "51": "Memuat VAE SeedVR2",
+        "52": "📐 Image Resampling (Lanczos)",
+        "53": "SeedVR2 Pre-Processing",
+        "54": "🧩 VAE Encode Tiled SeedVR2",
+        "55": "SeedVR2 Conditioning",
+        "56": "✨ KSampler SeedVR2 (Restoration)",
+        "57": "🖼️ VAE Decode Tiled 4K",
+        "58": "🎨 Color Correction (Lab)",
+        "59": "💾 Menyimpan Final 4K",
+    }
 
     async with aiohttp.ClientSession() as session:
         try:
@@ -816,6 +844,7 @@ async def execute_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                 bar = render_progress_bar(val, max_v)
                                 new_text = (
                                     f"🎨 **Sedang Merender...**\n"
+                                    f"• **Tahap:** `{current_stage_name}`\n"
                                     f"`[{bar}]` **{val}/{max_v}** ({int(val/max_v*100 if max_v else 0)}%)\n"
                                     f"• Seed: `{current_seed}`"
                                 )
@@ -831,6 +860,22 @@ async def execute_prompt(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             node = edata.get("node")
                             if node is None and edata.get("prompt_id") == prompt_id:
                                 break
+                            elif node is not None:
+                                current_stage_name = node_stage_names.get(str(node), f"Node #{node}")
+                                now = asyncio.get_event_loop().time()
+                                if now - last_ui_update > 1.2:
+                                    new_text = (
+                                        f"⏳ **Sedang Memproses...**\n"
+                                        f"• **Tahap:** `{current_stage_name}`\n"
+                                        f"• Seed: `{current_seed}`"
+                                    )
+                                    if new_text != last_text:
+                                        try:
+                                            await status_msg.edit_text(new_text, parse_mode=ParseMode.MARKDOWN)
+                                            last_text = new_text
+                                            last_ui_update = now
+                                        except Exception:
+                                            pass
 
                         elif etype == "execution_error":
                             if edata.get("prompt_id") == prompt_id:
