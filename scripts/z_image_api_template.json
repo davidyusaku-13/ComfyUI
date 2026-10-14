@@ -105,7 +105,7 @@
   },
   "14": {
     "inputs": {
-      "filename_prefix": "zi-351971767740904-1-base",
+      "filename_prefix": "zi-1-base",
       "images": [
         "9",
         0
@@ -113,7 +113,7 @@
     },
     "class_type": "SaveImage",
     "_meta": {
-      "title": "Save 1: Base (864x1152)"
+      "title": "Save 1: Base"
     }
   },
   "15": {
@@ -160,7 +160,7 @@
     },
     "class_type": "KSampler",
     "_meta": {
-      "title": "KSampler (Pass 2 Hi-Res 1.5x)"
+      "title": "KSampler (Pass 2 Hi-Res)"
     }
   },
   "31": {
@@ -185,7 +185,7 @@
   },
   "32": {
     "inputs": {
-      "filename_prefix": "zi-351971767740904-2-hires",
+      "filename_prefix": "zi-2-hires",
       "images": [
         "31",
         0
@@ -193,7 +193,7 @@
     },
     "class_type": "SaveImage",
     "_meta": {
-      "title": "Save 2: Hi-Res (1296x1728)"
+      "title": "Save 2: Hi-Res"
     }
   },
   "38": {
@@ -256,7 +256,7 @@
     },
     "class_type": "ImageScaleBy",
     "_meta": {
-      "title": "Image Scale 2x (Lanczos)"
+      "title": "Image Scale (Lanczos)"
     }
   },
   "53": {
@@ -354,7 +354,7 @@
     },
     "class_type": "VAEDecodeTiled",
     "_meta": {
-      "title": "VAE Decode Tiled (SeedVR2 4K)"
+      "title": "VAE Decode Tiled (SeedVR2)"
     }
   },
   "58": {
@@ -376,7 +376,7 @@
   },
   "59": {
     "inputs": {
-      "filename_prefix": "zi-351971767740904-3-4k",
+      "filename_prefix": "zi-3-seedvr2",
       "images": [
         "58",
         0
@@ -384,7 +384,7 @@
     },
     "class_type": "SaveImage",
     "_meta": {
-      "title": "Save 3: SeedVR2 (4K Ultra HD)"
+      "title": "Save 3: SeedVR2 (Final)"
     }
   },
   "68": {
@@ -407,7 +407,7 @@
     },
     "class_type": "EmptySD3LatentImage",
     "_meta": {
-      "title": "Empty SD3 Latent Image (Base 224x288)"
+      "title": "Empty SD3 Latent Image (Base)"
     }
   },
   "70": {
@@ -421,7 +421,7 @@
     },
     "class_type": "LatentUpscaleBy",
     "_meta": {
-      "title": "Latent Upscale 6x (Bislerp)"
+      "title": "Latent Upscale (Bislerp)"
     }
   }
 }
