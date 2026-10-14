@@ -25,5 +25,5 @@ filtered-openapi.yaml
 uv.lock
 .comfy_environment
 .serena/
-scripts/config.telegram.toml
 .env*
+/previews/
