@@ -34,6 +34,9 @@ import faulthandler
 import logging
 import signal
 import sys
+import warnings
+
+warnings.filterwarnings("ignore", category=FutureWarning, message=r".*torch.jit.script.*")
 from comfy_execution.progress import get_progress_state
 from comfy_execution.utils import get_executing_context
 from comfy_api import feature_flags
