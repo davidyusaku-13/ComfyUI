@@ -334,6 +334,16 @@ class TestModelDetection:
             assert type(model_config_from_unet(unprefixed, "")) is comfy.supported_models.MingImage
             model.load_state_dict(reloaded.process_unet_state_dict(unprefixed), strict=True, assign=True)
 
+    def test_lumina2_quantized_cap_embedder_detection(self):
+        sd = {
+            "cap_embedder.0.weight": torch.empty(2560, device="meta"),
+            "cap_embedder.1.weight": torch.empty(3840, 1280, device="meta"),
+            "noise_refiner.0.attention.k_norm.weight": torch.empty(128, device="meta"),
+        }
+        unet_config = detect_unet_config(sd, "")
+        assert unet_config["cap_feat_dim"] == 2560
+        assert unet_config["dim"] == 3840
+
     def test_unet_config_and_required_keys_combination_is_unique(self):
         """Each model in the registry must have a unique combination of
         ``unet_config`` and ``required_keys``. If two models share the same

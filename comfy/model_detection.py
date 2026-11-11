@@ -598,7 +598,11 @@ def detect_unet_config(state_dict, key_prefix, metadata=None):
         dit_config["in_channels"] = 16
         w = state_dict['{}cap_embedder.1.weight'.format(key_prefix)]
         dit_config["dim"] = w.shape[0]
-        dit_config["cap_feat_dim"] = w.shape[1]
+        cap_embedder_0_key = '{}cap_embedder.0.weight'.format(key_prefix)
+        if cap_embedder_0_key in state_dict_keys:
+            dit_config["cap_feat_dim"] = state_dict[cap_embedder_0_key].shape[0]
+        else:
+            dit_config["cap_feat_dim"] = w.shape[1]
         dit_config["n_layers"] = count_blocks(state_dict_keys, '{}layers.'.format(key_prefix) + '{}.')
         dit_config["qk_norm"] = True
 
